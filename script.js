@@ -54,7 +54,8 @@
             left: "20px",
             zIndex: 999999,
             userSelect: "none",
-            fontSize: "40px"
+            fontSize: "40px",
+            fontWeight: "bold"
         });
         score.innerText = scoreCount;
         document.body.appendChild(score);
@@ -80,7 +81,7 @@
             options: {
                 height: window.innerHeight,
                 width: window.innerWidth,
-                background: "transparent",
+                background: "#ffffff75",
                 wireframes: false,
             }
         });
