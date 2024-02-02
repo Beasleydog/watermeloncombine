@@ -189,6 +189,31 @@
             score.innerText = scoreCount;
         }
 
+        function confetti(x, y, type) {
+            const color = TYPE_MAP[type].color;
+            let r = TYPE_MAP[type].radius;
+            for (let i = 0; i < 50; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * .002;
+                const confetti = Bodies.circle(x + Math.cos(angle) * r, y + Math.sin(angle) * r, 5, {
+                    render: {
+                        fillStyle: color,
+                        strokeStyle: color
+                    },
+                    isSensor: true
+                });
+                confetti.friction = 0;
+                confetti.restitution = 0.5;
+                confetti.force.x = Math.cos(angle) * speed;
+                confetti.force.y = Math.sin(angle) * speed;
+                Composite.add(engine.world, [confetti]);
+                setTimeout(() => {
+                    Composite.remove(engine.world, confetti);
+                }, 2000);
+            }
+        }
+
+
         function clearBalls() {
             engine.world.gravity.y = 0;
             lastTooHigh = Number.MAX_VALUE;
@@ -213,6 +238,9 @@
 
                 if (bodyA.fruitType && bodyB.fruitType && bodyA.fruitType === bodyB.fruitType) {
                     //Handle fruit upgrades
+                    if (bodyA.merged || bodyB.merged) return;
+                    bodyA.merged = true;
+                    bodyB.merged = true;
 
                     const averageX = (bodyA.position.x + bodyB.position.x) / 2;
                     const averageY = (bodyA.position.y + bodyB.position.y) / 2;
@@ -220,7 +248,7 @@
                     const newType = nextType(bodyA.fruitType);
 
                     addFruit(newType, averageX, averageY);
-
+                    confetti(averageX, averageY, newType);
                     updateScore(scoreCount + Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1);
 
                     Composite.remove(engine.world, bodyA);
