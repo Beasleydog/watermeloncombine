@@ -81,7 +81,7 @@
             options: {
                 height: window.innerHeight,
                 width: window.innerWidth,
-                background: "#ffffff75",
+                background: "rgb(255 255 255 / 84%)",
                 wireframes: false,
             }
         });
@@ -112,39 +112,39 @@
             },
             blue: {
                 color: "blue",
-                radius: 30
+                radius: 40
             },
             aqua: {
                 color: "#00FFFF",
-                radius: 60
+                radius: 70
             },
             green: {
                 color: "green",
-                radius: 80
+                radius: 90
             },
             yellow: {
                 color: "yellow",
-                radius: 100
+                radius: 120
             },
             purple: {
                 color: "purple",
-                radius: 120
+                radius: 140
             },
             orange: {
                 color: "orange",
-                radius: 150
+                radius: 170
             },
             pink: {
                 color: "pink",
-                radius: 170
+                radius: 190
             },
             brown: {
                 color: "brown",
-                radius: 190
+                radius: 200
             },
             black: {
                 color: "black",
-                radius: 220
+                radius: 240
             },
             pearl: {
                 color: "#FCDFFF",
@@ -163,7 +163,7 @@
             const body = Bodies.circle(x, y, TYPE_MAP[type].radius);
             setFruitStyle(body, type);
             body.fruitType = type;
-            body.restitution = 0.9;
+            body.restitution = 0.7;
             body.friction = 0.1;
             body.hitYet = false;
             Composite.add(engine.world, [body]);
