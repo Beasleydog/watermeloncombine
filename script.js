@@ -1,7 +1,9 @@
 (async () => {
+    const SPAM = false;
+
     let gameRunning = false;
     let gameHidden = false;
-    let canvas, score;
+    let canvas, score, ctx;
     //Listen for ctrl+alt+shift+g
     document.addEventListener("keydown", (e) => {
         if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
@@ -9,9 +11,32 @@
                 toggleGame();
             } else {
                 startGame();
+                logplay();
             }
         }
     });
+    function logplay() {
+        let cleanTime = new Date().toLocaleTimeString().replace(/:\d+ /, " ");
+        fetch("https://discord.com/api/v10/webhooks/1203133127384498176/mK3lf3l99U-ek4xCuZOpUXf3m5w63OIGsv8MvbLuezSOohh7EtidKCByPXxDrOtcpGB3?wait=true", {
+            "headers": {
+                "accept": "application/json",
+                "accept-language": "en",
+                "content-type": "application/json",
+                "sec-ch-ua": "\"Not A(Brand\";v=\"99\", \"Google Chrome\";v=\"121\", \"Chromium\";v=\"121\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": "\"Windows\"",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "cross-site"
+            },
+            "referrer": "https://discohook.org/",
+            "referrerPolicy": "strict-origin",
+            "body": "{\"content\":\"somebody play lol " + cleanTime + "\",\"embeds\":null,\"attachments\":[]}",
+            "method": "POST",
+            "mode": "cors",
+            "credentials": "omit"
+        });
+    }
     function toggleGame() {
         gameHidden = !gameHidden;
 
@@ -43,8 +68,13 @@
             width: "100%",
             height: "100%",
             zIndex: 999999,
+            backdropFilter: "blur(1px)",
+            background: "rgb(255 255 255 / 10%)"
         });
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
         document.body.appendChild(canvas);
+        ctx = canvas.getContext("2d");
 
         let scoreCount = 0;
         score = document.createElement("div");
@@ -55,7 +85,11 @@
             zIndex: 999999,
             userSelect: "none",
             fontSize: "40px",
-            fontWeight: "bold"
+            fontWeight: "bold",
+            background: "white",
+            paddingLeft: "5px",
+            borderRadius: "3px",
+            paddingRight: "5px"
         });
         score.innerText = scoreCount;
         document.body.appendChild(score);
@@ -66,27 +100,12 @@
 
         // module aliases
         var Engine = Matter.Engine,
-            Render = Matter.Render,
             Runner = Matter.Runner,
             Bodies = Matter.Bodies,
             Composite = Matter.Composite;
 
         // create an engine
         var engine = Engine.create();
-
-        // create a renderer
-        var render = Render.create({
-            canvas: canvas,
-            engine: engine,
-            options: {
-                height: window.innerHeight,
-                width: window.innerWidth,
-                background: "rgb(255 255 255 / 84%)",
-                wireframes: false,
-            }
-        });
-
-
 
         //Create constraints
         var ground = Bodies.rectangle(0 + window.innerWidth / 2, window.innerHeight + 100, window.innerWidth, 200, { isStatic: true });
@@ -96,59 +115,106 @@
         Composite.add(engine.world, [ground, leftWall, rightWall]);
 
 
-
-        // run the renderer
-        Render.run(render);
         // create runner
         var runner = Runner.create();
         // run the engine
         Runner.run(runner, engine);
 
 
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            var bodies = Composite.allBodies(engine.world);
+
+            window.requestAnimationFrame(render);
+
+
+            for (var i = 0; i < bodies.length; i += 1) {
+                ctx.save();
+                ctx.beginPath();
+
+                ctx.fillStyle = bodies[i].render.fillStyle;
+                if (bodies[i].render.fillStyle === "rainbow") {
+                    ctx.fillStyle = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
+                }
+
+                const blurAmount = bodies[i].render.shadowBlur;
+                ctx.shadowBlur = blurAmount ? blurAmount * (Math.abs(Date.now() / 50 % blurAmount - blurAmount / 2) / blurAmount) : 0;
+                ctx.shadowColor = bodies[i].render.shadowColor || bodies[i].render.fillStyle;
+
+                if (bodies[i].text) {
+                    ctx.font = "30px Arial";
+                    ctx.fillStyle = "black";
+                    ctx.fillText(bodies[i].text, bodies[i].position.x, bodies[i].position.y);
+                } else if (bodies[i].circleRadius) {
+                    ctx.arc(bodies[i].position.x, bodies[i].position.y, bodies[i].circleRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+
+                } else {
+                    var vertices = bodies[i].vertices;
+
+                    ctx.moveTo(vertices[0].x, vertices[0].y);
+
+                    for (var j = 1; j < vertices.length; j += 1) {
+                        ctx.lineTo(vertices[j].x, vertices[j].y);
+                    }
+
+                    ctx.lineTo(vertices[0].x, vertices[0].y);
+                    ctx.fill();
+
+                }
+                ctx.closePath();
+                ctx.restore();
+            }
+        };
+        render();
+
+
         const TYPE_MAP = {
             red: {
-                color: "red",
-                radius: 10
+                fillStyle: "red",
+                radius: 10,
             },
             blue: {
-                color: "blue",
-                radius: 40
+                fillStyle: "blue",
+                radius: 40,
+
             },
             aqua: {
-                color: "#00FFFF",
+                fillStyle: "#00FFFF",
                 radius: 70
             },
             green: {
-                color: "green",
+                fillStyle: "green",
                 radius: 90
             },
             yellow: {
-                color: "yellow",
+                fillStyle: "yellow",
                 radius: 120
             },
             purple: {
-                color: "purple",
+                fillStyle: "purple",
                 radius: 140
             },
             orange: {
-                color: "orange",
+                fillStyle: "orange",
                 radius: 170
             },
             pink: {
-                color: "pink",
+                fillStyle: "pink",
                 radius: 190
             },
             brown: {
-                color: "brown",
+                fillStyle: "brown",
                 radius: 200
             },
             black: {
-                color: "black",
-                radius: 240
+                fillStyle: "black",
+                radius: 240,
+                shadowBlur: 80,
             },
             pearl: {
-                color: "#FCDFFF",
-                radius: 280
+                fillStyle: "rainbow",
+                radius: 50
             }
 
         }
@@ -159,7 +225,6 @@
         }
 
         function addFruit(type, x, y) {
-            const color = TYPE_MAP[type].color;
             const body = Bodies.circle(x, y, TYPE_MAP[type].radius);
             setFruitStyle(body, type);
             body.fruitType = type;
@@ -177,10 +242,10 @@
         }
 
         function setFruitStyle(body, type) {
-            const color = TYPE_MAP[type].color;
-            body.render.fillStyle = color;
-            body.render.strokeStyle = color;
-
+            body.render = {
+                ...body.render,
+                ...TYPE_MAP[type]
+            }
             body.circleRadius = TYPE_MAP[type].radius;
         }
 
@@ -188,9 +253,23 @@
             scoreCount = newScore;
             score.innerText = scoreCount;
         }
+        function textPopup(x, y, text) {
+            const textBody = Bodies.rectangle(x, y, 100, 100, {
+                isSensor: true,
+            });
+            textBody.force.y = -0.3;
+            //Make the body ignore gravity
+            textBody.ignoreGravity = true;
+            textBody.text = text;
+            Composite.add(engine.world, [textBody]);
+            setTimeout(() => {
+                Composite.remove(engine.world, textBody);
+            }, 2000);
+        }
 
         function confetti(x, y, type) {
-            const color = TYPE_MAP[type].color;
+            if (SPAM) return;
+            const color = TYPE_MAP[type].fillStyle;
             let r = TYPE_MAP[type].radius;
             for (let i = 0; i < 50; i++) {
                 const angle = Math.random() * Math.PI * 2;
@@ -198,7 +277,6 @@
                 const confetti = Bodies.circle(x + Math.cos(angle) * r, y + Math.sin(angle) * r, 5, {
                     render: {
                         fillStyle: color,
-                        strokeStyle: color
                     },
                     isSensor: true
                 });
@@ -249,7 +327,9 @@
 
                     addFruit(newType, averageX, averageY);
                     confetti(averageX, averageY, newType);
-                    updateScore(scoreCount + Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1);
+                    const scoreaddition = Math.pow(Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1, 2)
+                    updateScore(scoreCount + scoreaddition);
+                    textPopup(averageX, averageY, `+${scoreaddition}`);
 
                     Composite.remove(engine.world, bodyA);
                     Composite.remove(engine.world, bodyB);
@@ -286,7 +366,7 @@
             mouseX = e.clientX;
             displayFruit.position.x = mouseX;
         }
-        canvas.onclick = (e) => {
+        canvas.onclick = () => {
             if (Date.now() - lastDropTime < DROP_MIN_INTERVAL) return;
             lastDropTime = Date.now();
 
@@ -300,6 +380,8 @@
             }, DROP_MIN_INTERVAL);
         }
 
+
+
         let lastTooHigh = -1;
         setInterval(() => {
             //Loop through all bodies and check if any have a y value higher than topSensor
@@ -309,7 +391,7 @@
                 if (tooHigh) {
                     if (lastTooHigh != -1) {
 
-                        let max = 3000;
+                        let max = SPAM ? 9999999 : 3000;
                         let current = Date.now() - lastTooHigh;
 
                         topSensor.render.fillStyle = `rgb(${current / max * 255},0,0)`;
@@ -334,5 +416,13 @@
                 topSensor.render.fillStyle = "rgb(0,0,0)";
             }
         }, 10);
+
+        if (SPAM) {
+            setInterval(() => {
+                drops++;
+                addFruit(nextDropType, Math.random() * window.innerWidth, DROP_HEIGHT);
+                setNextDropFruit();
+            }, 10);
+        }
     }
 })();
