@@ -18,7 +18,7 @@
     let canvas, score, ctx;
 
     const DROP_HEIGHT = 30;
-    const DROP_MIN_INTERVAL = 1000;
+    const DROP_MIN_INTERVAL = 500;
 
     //Import matter.js
     const script = document.createElement("script");
