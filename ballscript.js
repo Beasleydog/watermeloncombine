@@ -70,8 +70,15 @@
         Bodies = Matter.Bodies,
         Composite = Matter.Composite;
 
+    window.Engine = Engine;
+    window.Runner = Runner;
+    window.Bodies = Bodies;
+    window.Composite = Composite;
+
     // create an engine
     var engine = Engine.create();
+    engine.enableSleeping = false;
+    window.engine = engine;
 
     //Create constraints
     var ground = Bodies.rectangle(
@@ -97,13 +104,18 @@
         { isStatic: true }
     );
     Composite.add(engine.world, [ground, leftWall, rightWall]);
-
+    leftWall.hitYet = true;
+    rightWall.hitYet = true;
+    ground.hitYet = true;
     // create runner
     var runner = Runner.create();
     // run the engine
     Runner.run(runner, engine);
-
+    let validChains = [];
+    let RAINBOW_COLOR;
     function render() {
+        RAINBOW_COLOR = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
+
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         var bodies = Composite.allBodies(engine.world);
 
@@ -115,7 +127,7 @@
 
             ctx.fillStyle = bodies[i].render.fillStyle;
             if (bodies[i].render.fillStyle === "rainbow") {
-                ctx.fillStyle = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
+                ctx.fillStyle = RAINBOW_COLOR;
             }
 
             const blurAmount = bodies[i].render.shadowBlur;
@@ -157,8 +169,35 @@
                 ctx.fill();
             }
             ctx.closePath();
+
+            // if (bodies[i].fruitType) {
+            //     //Draw the number of the longest chain on the ball
+            //     let chainsOnBall = getChains(bodies[i]);
+            //     let longestChain = chainsOnBall.reduce((a, b) => a.length > b.length ? a : b, []);
+            //     ctx.fillStyle = "black";
+            //     ctx.font = "30px Arial";
+            //     ctx.fillText(longestChain.length, bodies[i].position.x, bodies[i].position.y);
+
+            // }
             ctx.restore();
         }
+
+        //Draw outlines around balls in chains
+        for (let chain of validChains) {
+            ctx.beginPath();
+
+            //Make pulse effect
+            let alpha = (Math.abs(((Date.now() / 200) % 10) - 10 / 2) / 10) * .8 - .1;
+            ctx.strokeStyle = `rgba(199, 202, 204,${alpha})`;
+            ctx.lineWidth = 5;
+            ctx.lineCap = "round";
+            ctx.moveTo(chain[0].position.x, chain[0].position.y);
+            for (let ball of chain) {
+                ctx.lineTo(ball.position.x, ball.position.y);
+            }
+            ctx.stroke();
+        }
+
         console.log("rendering");
         if (!document.hidden) {
             if (localStorage.getItem("lastInteract") !== id) return;
@@ -173,7 +212,7 @@
                     });
                 });
             localStorage.setItem("game", JSON.stringify(stringBodys));
-          localStorage.setItem("score",scoreCount)
+            localStorage.setItem("score", scoreCount)
         }
     }
     render();
@@ -187,10 +226,10 @@
         const stringBodys = JSON.parse(localStorage.getItem("game"));
         if (!stringBodys) return;
         stringBodys.forEach((body) => {
-            let f = addFruit(body.fruitType, body.position.x, body.position.y);
+            let f = addFruit(body.fruitType, body.position.x, body.position.y, { hitYet: true });
             f.velocity = body.velocity;
         });
-      updateScore(localStorage.getItem("score"));
+        updateScore(localStorage.getItem("score"));
     }
 
     document.addEventListener("visibilitychange", () => {
@@ -253,14 +292,23 @@
         return typeArray[currentIndex + 1];
     }
 
-    function addFruit(type, x, y) {
+    function addFruit(type, x, y, options) {
         const body = Bodies.circle(x, y, TYPE_MAP[type].radius);
         setFruitStyle(body, type);
         body.fruitType = type;
+        body.fruitTypeNumber = Object.keys(TYPE_MAP).indexOf(type);
         body.restitution = 0.7;
         body.friction = 0.1;
         body.hitYet = false;
+
+        //Add any other options
+        if (options) {
+            Object.assign(body, options);
+        }
+
         Composite.add(engine.world, [body]);
+
+
         return body;
     }
 
@@ -289,7 +337,7 @@
         score.innerText = scoreCount;
     }
     function textPopup(x, y, text) {
-      if(SPAM)return;
+        if (SPAM) return;
         const textBody = Bodies.rectangle(x, y, 100, 100, {
             isSensor: true,
         });
@@ -349,17 +397,64 @@
             }
         }, 30);
     }
-  window.gameOver= function gameOver(){
-    alert("Game Over! Score: " + scoreCount);
 
-                        updateScore(0);
-                        clearBalls();
-                        drops = 0;
-  }
+    function previousStepNeighbors(ball) {
+        return engine.world.bodies.filter(x => x.fruitType).filter((x) => {
+            return Matter.Collision.collides(x, ball) && x.fruitTypeNumber == ball.fruitTypeNumber - 1
+        });
+    }
+    function getChains(ball) {
+        let uglyChains = c(ball);
+        let cleanChains = flattenChains(uglyChains);
+        cleanChains = cleanChains.map(x => [ball].concat(x));
+        return cleanChains;
+    }
+    function c(ball) {
+        let neighbors = previousStepNeighbors(ball);
+        neighbors = neighbors.map((x) => {
+            return {
+                main: x,
+                next: c(x)
+            }
+        });
+        return neighbors;
+    }
+    function flattenChains(arr) {
+        let result = [];
+        for (let obj of arr) {
+            if (obj.next.length == 0) {
+                result.push([obj.main]);
+            } else {
+                let next = flattenChains(obj.next);
+                for (let n of next) {
+                    result.push([obj.main].concat(n));
+                }
+            }
+        }
+        return result;
+    }
+
+
+
+    window.gameOver = function gameOver() {
+        alert("Game Over! Score: " + scoreCount);
+
+        updateScore(0);
+        clearBalls();
+        drops = 0;
+    }
+
     Matter.Events.on(engine, "collisionStart", function (event) {
         var pairs = event.pairs;
         pairs.forEach((pair) => {
+
             const { bodyA, bodyB } = pair;
+
+            if (bodyA.isSensor || bodyB.isSensor) return;
+
+            if (!bodyA.hitYet) console.log(bodyA);
+            if (!bodyB.hitYet) console.log(bodyB);
+
             if (bodyA.fruitType) bodyA.hitYet = true;
             if (bodyB.fruitType) bodyB.hitYet = true;
 
@@ -391,6 +486,13 @@
                 Composite.remove(engine.world, bodyB);
             }
         });
+
+
+        //Store any chains longer than 2 in the validChains array
+        let fruit = engine.world.bodies.filter((x) => x.fruitType);
+
+        validChains = [...fruit.map(getChains)].flat().filter((x) => x.length > 3);
+        window.validChains = validChains;
     });
 
     loadFromStorage();
@@ -450,7 +552,7 @@
         //Loop through all bodies and check if any have a y value higher than topSensor
         let tooHighs = engine.world.bodies.filter((body) => {
             if (!body.hitYet) return false;
-            let tooHigh = body.position.y+body.circleRadius < topSensor.position.y && body.fruitType;
+            let tooHigh = body.position.y + body.circleRadius < topSensor.position.y && body.fruitType;
             if (tooHigh) {
                 if (lastTooHigh != -1) {
                     let max = SPAM ? 9999999 : 3000;

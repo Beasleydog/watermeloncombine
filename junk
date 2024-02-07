@@ -1,0 +1,39 @@
+
+        //Draw lines along the outer edges of balls in a chain
+        // for (let chain of validChains) {
+        //     ctx.beginPath();
+        //     for (let i = 0; i < chain.length - 1; i++) {
+        //         let colAngle = Math.atan2(chain[i + 1].position.y - chain[i].position.y, chain[i + 1].position.x - chain[i].position.x);
+        //         const SHIFT = Math.PI * 90 / 180;
+        //         let x1 = chain[i].position.x + Math.cos(colAngle + SHIFT) * chain[i].circleRadius;
+        //         let y1 = chain[i].position.y + Math.sin(colAngle + SHIFT) * chain[i].circleRadius;
+        //         let x2 = chain[i].position.x + Math.cos(colAngle - SHIFT) * chain[i].circleRadius;
+        //         let y2 = chain[i].position.y + Math.sin(colAngle - SHIFT) * chain[i].circleRadius;
+        //         let x3 = chain[i + 1].position.x + Math.cos(colAngle + SHIFT) * chain[i + 1].circleRadius;
+        //         let y3 = chain[i + 1].position.y + Math.sin(colAngle + SHIFT) * chain[i + 1].circleRadius;
+        //         let x4 = chain[i + 1].position.x + Math.cos(colAngle - SHIFT) * chain[i + 1].circleRadius;
+        //         let y4 = chain[i + 1].position.y + Math.sin(colAngle - SHIFT) * chain[i + 1].circleRadius;
+        //         ctx.moveTo(x1, y1);
+        //         ctx.lineTo(x3, y3);
+        //         ctx.moveTo(x2, y2);
+        //         ctx.lineTo(x4, y4);
+        //     }
+        //     ctx.stroke();
+        // }
+        
+
+          validChains.forEach((chain) => {
+            chain.forEach((ball) => {
+                ctx.beginPath();
+                ctx.arc(
+                    ball.position.x,
+                    ball.position.y,
+                    ball.circleRadius,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = RAINBOW_COLOR;
+                ctx.stroke();
+            });
+        })
