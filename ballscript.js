@@ -17,6 +17,8 @@
 
     let canvas, score, ctx;
 
+    const MIN_CHAIN_LENGTH = 2;
+    const CHAIN_LIFE = 3000;
     const DROP_HEIGHT = 30;
     const DROP_MIN_INTERVAL = 500;
 
@@ -28,18 +30,19 @@
 
     //Create fullscreen transparent canvas
     canvas = document.createElement("canvas");
+    canvas.width = 1366;
+    canvas.height = 777;
     Object.assign(canvas.style, {
         position: "fixed",
         top: 0,
         left: 0,
-        width: "100%",
-        height: "100%",
+        ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
         zIndex: 999999,
         backdropFilter: "blur(1px)",
         background: "rgb(255 255 255 / 10%)",
+        border: "1px solid black",
     });
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+
     document.body.appendChild(canvas);
     ctx = canvas.getContext("2d");
 
@@ -82,25 +85,25 @@
 
     //Create constraints
     var ground = Bodies.rectangle(
-        0 + window.innerWidth / 2,
-        window.innerHeight + 100,
-        window.innerWidth,
+        0 + canvas.width / 2,
+        canvas.height + 100,
+        canvas.width,
         200,
         { isStatic: true }
     );
     ground.friction = 0;
     var leftWall = Bodies.rectangle(
         -100,
-        window.innerHeight / 2,
+        canvas.height / 2,
         200,
-        window.innerHeight,
+        canvas.height,
         { isStatic: true }
     );
     var rightWall = Bodies.rectangle(
-        window.innerWidth + 100,
-        window.innerHeight / 2,
+        canvas.width + 100,
+        canvas.height / 2,
         200,
-        window.innerHeight,
+        canvas.height,
         { isStatic: true }
     );
     Composite.add(engine.world, [ground, leftWall, rightWall]);
@@ -112,6 +115,7 @@
     // run the engine
     Runner.run(runner, engine);
     let validChains = [];
+    let chainList = [];
     let RAINBOW_COLOR;
     function render() {
         RAINBOW_COLOR = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
@@ -170,15 +174,15 @@
             }
             ctx.closePath();
 
-            // if (bodies[i].fruitType) {
-            //     //Draw the number of the longest chain on the ball
-            //     let chainsOnBall = getChains(bodies[i]);
-            //     let longestChain = chainsOnBall.reduce((a, b) => a.length > b.length ? a : b, []);
-            //     ctx.fillStyle = "black";
-            //     ctx.font = "30px Arial";
-            //     ctx.fillText(longestChain.length, bodies[i].position.x, bodies[i].position.y);
+            if (bodies[i].fruitType) {
+                //Draw the number of the longest chain on the ball
+                //                 let chainsOnBall = getChains(bodies[i]);
+                //                 let longestChain = chainsOnBall.reduce((a, b) => a.length > b.length ? a : b, []);
+                ctx.fillStyle = "black";
+                ctx.font = "10px Arial";
+                ctx.fillText(bodies[i].inChains, bodies[i].position.x, bodies[i].position.y);
 
-            // }
+            }
             ctx.restore();
         }
 
@@ -198,7 +202,7 @@
             ctx.stroke();
         }
 
-        console.log("rendering");
+
         if (!document.hidden) {
             if (localStorage.getItem("lastInteract") !== id) return;
             //Create array of all fruit in simple object form with only necessary properties
@@ -300,7 +304,7 @@
         body.restitution = 0.7;
         body.friction = 0.1;
         body.hitYet = false;
-
+        body.inChains = [];
         //Add any other options
         if (options) {
             Object.assign(body, options);
@@ -433,7 +437,12 @@
         }
         return result;
     }
-
+    function arrayEquals(a, b) {
+        return Array.isArray(a) &&
+            Array.isArray(b) &&
+            a.length === b.length &&
+            a.every((val, index) => val === b[index]);
+    }
 
 
     window.gameOver = function gameOver() {
@@ -457,6 +466,12 @@
 
             if (bodyA.fruitType) bodyA.hitYet = true;
             if (bodyB.fruitType) bodyB.hitYet = true;
+
+            let sharedChain;
+            if (bodyA.fruitType && bodyB.fruitType) {
+                sharedChain = bodyA.inChains.find(x => bodyB.inChains.includes(x));
+
+            }
 
             if (
                 bodyA.fruitType &&
@@ -490,17 +505,63 @@
 
         //Store any chains longer than 2 in the validChains array
         let fruit = engine.world.bodies.filter((x) => x.fruitType);
+        let allChains = [...fruit.map(getChains)].flat().filter((x) => x.length > MIN_CHAIN_LENGTH);
+        console.log(allChains.map(x => x.length));
 
-        validChains = [...fruit.map(getChains)].flat().filter((x) => x.length > 3);
+        //Ensure chainList has most up to date info
+        allChains.forEach((chain, i) => {
+            let existsInList = false;
+            let ids = chain.map(x => x.id);
+            chainList.forEach((chainInList, i) => {
+                if (arrayEquals(chainInList.ids, ids)) {
+                    //Chain is already accounted for
+                    existsInList = true;
+
+                    chainList[i].lastSeen = Date.now();
+                }
+            });
+
+
+            if (!existsInList) {
+                let chainId = Math.round(Math.random() * 1000000);
+                chainList.push({
+                    ids: ids,
+                    lastSeen: Date.now(),
+                    chainId: chainId,
+                    combined: 0
+                });
+                chain.forEach((body) => {
+                    body.inChains.push(chainId);
+                })
+            }
+        });
+
+        let expiredChains = allChains.filter((chain) => {
+            return Date.now() - chain.lastSeen > CHAIN_LIFE;
+        });
+
+        //Un-chainify any balls that were in a chain
+        engine.world.bodies.forEach((body) => {
+            if (!body.fruitType) return;
+            expiredChains.forEach((expiredChain) => {
+                body.inChains = body.inChains.filter(x => x != expiredChain.chainId);
+            });
+        });
+
+        //kill expired chains
+        chainList = chainList.filter((chain) => {
+            return Date.now() - chain.lastSeen < CHAIN_LIFE;
+        });
+
         window.validChains = validChains;
     });
 
     loadFromStorage();
 
     const topSensor = Bodies.rectangle(
-        window.innerWidth / 2,
+        canvas.width / 2,
         DROP_HEIGHT * 2,
-        window.innerWidth,
+        canvas.width,
         10,
         {
             isStatic: true,
@@ -514,12 +575,12 @@
     Composite.add(engine.world, [topSensor]);
 
     //Create fruit that ignores gravity and follows mouseX
-    const displayFruit = Bodies.circle(window.innerWidth / 2, DROP_HEIGHT, 10, {
+    const displayFruit = Bodies.circle(canvas.width / 2, DROP_HEIGHT, 10, {
         isStatic: true,
         isSensor: true,
     });
     Composite.add(engine.world, [displayFruit]);
-    let mouseX = window.innerWidth / 2;
+    let mouseX = canvas.width / 2;
 
     let nextDropType = "red";
     setFruitStyle(displayFruit, nextDropType);
@@ -528,7 +589,7 @@
     let drops = 0;
 
     canvas.onmousemove = (e) => {
-        mouseX = e.clientX;
+        mouseX = e.clientX / canvas.getBoundingClientRect().width * canvas.width;
         displayFruit.position.x = mouseX;
     };
     canvas.onclick = () => {
@@ -580,7 +641,7 @@
     if (SPAM) {
         setInterval(() => {
             drops++;
-            addFruit(nextDropType, Math.random() * window.innerWidth, DROP_HEIGHT);
+            addFruit(nextDropType, Math.random() * canvas.width, DROP_HEIGHT);
             setNextDropFruit();
         }, 1);
     }
