@@ -178,9 +178,9 @@
                 //Draw the number of the longest chain on the ball
                 //                 let chainsOnBall = getChains(bodies[i]);
                 //                 let longestChain = chainsOnBall.reduce((a, b) => a.length > b.length ? a : b, []);
-                ctx.fillStyle = "black";
-                ctx.font = "10px Arial";
-                ctx.fillText(bodies[i].inChains, bodies[i].position.x, bodies[i].position.y);
+                // ctx.fillStyle = "black";
+                // ctx.font = "10px Arial";
+                // ctx.fillText(bodies[i].inChains, bodies[i].position.x, bodies[i].position.y);
 
             }
             ctx.restore();
