@@ -356,13 +356,26 @@
     window.addFruit = addFruit;
 
     function setNextDropFruit() {
+        let sameCount = 4;
         let modifier = Math.max(Math.round(6 - drops / 100), 3);
-        nextDropType =
-            Object.keys(TYPE_MAP)[
-            Math.floor(
-                (Math.pow(Math.random(), modifier) * Object.keys(TYPE_MAP).length) / 2
-            )
-            ];
+
+        while (sameCount > 0) {
+            nextDropType =
+                Object.keys(TYPE_MAP)[
+                Math.floor(
+                    (Math.pow(Math.random(), modifier) * Object.keys(TYPE_MAP).length) / 2
+                )
+                ];
+            if (nextDropType === currentDropType) {
+                sameCount--;
+            } else {
+                sameCount = 0;
+            }
+
+            if (nextDropType === Object.keys(TYPE_MAP)[0]) {
+                sameCount = 0;
+            }
+        }
         window.nextDropType = nextDropType;
         score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
     }
@@ -398,7 +411,7 @@
         if (SPAM) return;
         const color = TYPE_MAP[type].fillStyle;
         let r = TYPE_MAP[type].radius;
-        for (let i = 0; i < 50; i++) {
+        for (let i = 0; i < 30; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 0.002;
             const confetti = Bodies.circle(
@@ -489,10 +502,10 @@
                         let rx = Math.random() * window.innerWidth;
                         let ry = Math.random() * window.innerHeight;
                         confetti(rx, ry, "r")
-                    }, 100);
+                    }, 80);
                     setTimeout(() => {
                         clearInterval(cel);
-                    }, 3000);
+                    }, 5000);
                 }
 
                 addFruit(newType, averageX, averageY);
@@ -652,8 +665,8 @@
             if (!body.hitYet) return false;
 
             //If the body has enough velocity, ignore it
-            if (Math.sqrt(Math.pow(body.velocity.y, 2) + Math.pow(body.velocity.x), 2) > .5) return false;
-            if (Math.abs(body.velocity.y) + Math.abs(body.velocity.x) > 1) return false;
+            if (Math.sqrt(Math.pow(body.velocity.y, 2) + Math.pow(body.velocity.x), 2) > 3) return false;
+            if (Math.abs(body.velocity.y) + Math.abs(body.velocity.x) > 3) return false;
 
             let tooHigh = body.position.y + body.circleRadius < topSensor.position.y && body.fruitType;
             if (tooHigh) {
