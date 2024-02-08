@@ -82,7 +82,7 @@
 
     const DEFAULT_DROP_HEIGHT = 30;
     let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
-    const DROP_MIN_INTERVAL = 500;
+    let DROP_MIN_INTERVAL = 500;
 
     //Import matter.js
     const script = document.createElement("script");
@@ -640,7 +640,8 @@
         localStorage.setItem("lastInteract", id);
 
         drops++;
-        DROP_MIN_INTERVAL += 2;
+        console.log(drops);
+        DROP_MIN_INTERVAL += 1;
         if (DROP_MIN_INTERVAL > 1000) DROP_MIN_INTERVAL = 1000;
         console.log(displayFruit)
         addFruit(currentDropType, mouseX, DROP_HEIGHT);
