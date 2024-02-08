@@ -640,6 +640,8 @@
         localStorage.setItem("lastInteract", id);
 
         drops++;
+        DROP_MIN_INTERVAL += 2;
+        if (DROP_MIN_INTERVAL > 1000) DROP_MIN_INTERVAL = 1000;
         console.log(displayFruit)
         addFruit(currentDropType, mouseX, DROP_HEIGHT);
         currentDropType = nextDropType;
