@@ -158,6 +158,13 @@
     engine.enableSleeping = false;
     window.engine = engine;
 
+    //Create fruit that ignores gravity and follows mouseX
+    const displayFruit = Bodies.circle(canvas.width / 2, DROP_HEIGHT, 10, {
+        isStatic: true,
+        isSensor: true,
+    });
+    Composite.add(engine.world, [displayFruit]);
+
     //Create constraints
     var ground = Bodies.rectangle(
         0 + canvas.width / 2,
@@ -318,14 +325,14 @@
             f.velocity = body.velocity;
         });
         updateScore(localStorage.getItem("score"));
+
+        currentDropType = localStorage.getItem("currentDropType") || "red";
+        setFruitStyle(displayFruit, currentDropType);
+        nextDropType = localStorage.getItem("nextDropType") || "red";
+        score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
     }
 
-    document.addEventListener("visibilitychange", () => {
-        if (!document.hidden) {
-            //Remove all fruit then load in the ones from localstorage
-            loadFromStorage();
-        }
-    });
+
 
 
     function nextType(currentType) {
@@ -377,6 +384,7 @@
             }
         }
         window.nextDropType = nextDropType;
+        localStorage.setItem("nextDropType", nextDropType);
         score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
     }
 
@@ -527,7 +535,6 @@
     });
 
 
-    loadFromStorage();
 
     const topSensor = Bodies.rectangle(
         canvas.width / 2,
@@ -545,12 +552,7 @@
     topSensor.death = true;
     Composite.add(engine.world, [topSensor]);
 
-    //Create fruit that ignores gravity and follows mouseX
-    const displayFruit = Bodies.circle(canvas.width / 2, DROP_HEIGHT, 10, {
-        isStatic: true,
-        isSensor: true,
-    });
-    Composite.add(engine.world, [displayFruit]);
+
 
     setFruitStyle(displayFruit, nextDropType);
 
@@ -641,6 +643,7 @@
         console.log(displayFruit)
         addFruit(currentDropType, mouseX, DROP_HEIGHT);
         currentDropType = nextDropType;
+        localStorage.setItem("currentDropType", currentDropType);
         setFruitStyle(displayFruit, currentDropType);
         setNextDropFruit();
 
@@ -705,6 +708,14 @@
         if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
             console.log("close ball")
             parent.postMessage("closeBall", "*");
+        }
+    });
+    loadFromStorage();
+
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+            //Remove all fruit then load in the ones from localstorage
+            loadFromStorage();
         }
     });
 })();
