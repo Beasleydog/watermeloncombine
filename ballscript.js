@@ -190,14 +190,17 @@
 
         window.requestAnimationFrame(render);
 
-        //Draw the next ball
-        ctx.save();
-        ctx.globalAlpha = 0.3;
-        ctx.fillStyle = TYPE_MAP[nextDropType].fillStyle;
-        let radius = TYPE_MAP[nextDropType].radius;
-        ctx.arc(mouseX - TYPES_MAP[currentDropType].radius, DROP_HEIGHT, radius * .8, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.restore();
+        // //Draw the next ball
+        // ctx.save();
+        // ctx.globalAlpha = 0.2;
+        // //Make bigger balls slightly more opaque
+        // ctx.globalAlpha += (TYPES_MAP[currentDropType].radius / 200) * 0.8;
+
+        // ctx.fillStyle = TYPE_MAP[nextDropType].fillStyle;
+        // let radius = TYPE_MAP[nextDropType].radius;
+        // ctx.arc(mouseX - TYPES_MAP[currentDropType].radius - radius / 2, DROP_HEIGHT, radius * .8, 0, 2 * Math.PI);
+        // ctx.fill();
+        // ctx.restore();
 
 
         for (var i = 0; i < bodies.length; i += 1) {
@@ -330,7 +333,7 @@
         body.restitution = 0.7;
         body.friction = 0.1;
         body.hitYet = false;
-        body.slop = .5;
+        // body.slop = .1;
         //Add any other options
         if (options) {
             Object.assign(body, options);
@@ -353,6 +356,7 @@
             )
             ];
         window.nextDropType = nextDropType;
+        score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
     }
 
     function setFruitStyle(body, type) {
@@ -536,43 +540,43 @@
         TYPE_MAP = {
             red: {
                 fillStyle: "red",
-                radius: 10,
+                radius: 8,
             },
             blue: {
                 fillStyle: "blue",
-                radius: 40,
+                radius: 45,
             },
             aqua: {
                 fillStyle: "#00FFFF",
-                radius: 70,
+                radius: 75,
             },
             green: {
                 fillStyle: "green",
-                radius: 90,
+                radius: 100,
             },
             yellow: {
                 fillStyle: "yellow",
-                radius: 120,
+                radius: 130,
             },
             purple: {
                 fillStyle: "purple",
-                radius: 140,
+                radius: 155,
             },
             orange: {
                 fillStyle: "orange",
-                radius: 170,
+                radius: 185,
             },
             pink: {
                 fillStyle: "pink",
-                radius: 190,
+                radius: 200,
             },
             brown: {
                 fillStyle: "brown",
-                radius: 200,
+                radius: 215,
             },
             black: {
                 fillStyle: "black",
-                radius: 240,
+                radius: 260,
                 shadowBlur: 80,
                 effect: "pulse"
             },
