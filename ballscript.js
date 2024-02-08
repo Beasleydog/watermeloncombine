@@ -98,14 +98,22 @@
     canvas.height = 777;
     Object.assign(canvas.style, {
         position: "fixed",
-        top: 0,
-        left: 0,
+        bottom: 0,
+        left: "50vw",
+        transform: "translateX(-50%)",
         ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
         zIndex: 999999,
         backdropFilter: "blur(1px)",
         background: "rgb(255 255 255 / 10%)",
         border: "1px solid black",
+        borderTop: "none"
     });
+
+    window.onresize = () => {
+        Object.assign(canvas.style, {
+            ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
+        });
+    }
 
     document.body.appendChild(canvas);
     let mouseX = canvas.width / 2;
@@ -588,11 +596,29 @@
             },
         };
     }
-    canvas.onmousemove = (e) => {
-        mouseX = e.clientX / canvas.getBoundingClientRect().width * canvas.width;
+    let realMouseX = mouseX;
+    function constrainMouseX() {
+        //Look at the current ball and if the mosue position would cause the ball to go offscreen, move the ball to the edge of the screen
+        let currentRadius = TYPE_MAP[currentDropType].radius;
+        if (mouseX - currentRadius < 0) {
+            mouseX = currentRadius;
+        } else if (mouseX + currentRadius > canvas.width) {
+            mouseX = canvas.width - currentRadius;
+        }
+        if (realMouseX < canvas.getBoundingClientRect().left) {
+            mouseX = currentRadius
+        } else if (realMouseX > canvas.getBoundingClientRect().width + canvas.getBoundingClientRect().left) {
+            mouseX = canvas.width - currentRadius
+        }
         displayFruit.position.x = mouseX;
+    }
+    document.onmousemove = (e) => {
+        realMouseX = e.clientX;
+        mouseX = (realMouseX - canvas.getBoundingClientRect().left) / canvas.getBoundingClientRect().width * canvas.width;
+        constrainMouseX();
     };
-    canvas.onclick = () => {
+    document.onclick = () => {
+        constrainMouseX();
         if (Date.now() - lastDropTime < DROP_MIN_INTERVAL) return;
         lastDropTime = Date.now();
 
@@ -611,7 +637,12 @@
         setTimeout(() => {
             DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
             displayFruit.position.y = DROP_HEIGHT;
+            constrainMouseX();
+
         }, DROP_MIN_INTERVAL);
+
+        constrainMouseX();
+
     };
 
     let lastTooHigh = -1;
@@ -619,6 +650,11 @@
         //Loop through all bodies and check if any have a y value higher than topSensor
         let tooHighs = engine.world.bodies.filter((body) => {
             if (!body.hitYet) return false;
+
+            //If the body has enough velocity, ignore it
+            if (Math.sqrt(Math.pow(body.velocity.y, 2) + Math.pow(body.velocity.x), 2) > .5) return false;
+            if (Math.abs(body.velocity.y) + Math.abs(body.velocity.x) > 1) return false;
+
             let tooHigh = body.position.y + body.circleRadius < topSensor.position.y && body.fruitType;
             if (tooHigh) {
                 if (lastTooHigh != -1) {
