@@ -17,8 +17,6 @@
 
     let canvas, score, ctx;
 
-    const MIN_CHAIN_LENGTH = 2;
-    const CHAIN_LIFE = 1000;
     const DROP_HEIGHT = 30;
     const DROP_MIN_INTERVAL = 500;
 
@@ -114,8 +112,6 @@
     var runner = Runner.create();
     // run the engine
     Runner.run(runner, engine);
-    let validChains = [];
-    let chainList = [];
     let RAINBOW_COLOR;
     function render() {
         RAINBOW_COLOR = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
@@ -174,33 +170,10 @@
             }
             ctx.closePath();
 
-            if (bodies[i].fruitType) {
-                //Draw the number of the longest chain on the ball
-                //                 let chainsOnBall = getChains(bodies[i]);
-                //                 let longestChain = chainsOnBall.reduce((a, b) => a.length > b.length ? a : b, []);
-                ctx.fillStyle = "black";
-                ctx.font = "10px Arial";
-                ctx.fillText(bodies[i].inChains, bodies[i].position.x, bodies[i].position.y);
 
-            }
             ctx.restore();
         }
 
-        //Draw outlines around balls in chains
-        for (let chain of validChains) {
-            ctx.beginPath();
-
-            //Make pulse effect
-            let alpha = (Math.abs(((Date.now() / 200) % 10) - 10 / 2) / 10) * .8 - .1;
-            ctx.strokeStyle = `rgba(199, 202, 204,${alpha})`;
-            ctx.lineWidth = 5;
-            ctx.lineCap = "round";
-            ctx.moveTo(chain[0].position.x, chain[0].position.y);
-            for (let ball of chain) {
-                ctx.lineTo(ball.position.x, ball.position.y);
-            }
-            ctx.stroke();
-        }
 
 
         if (!document.hidden) {
@@ -304,7 +277,6 @@
         body.restitution = 0.7;
         body.friction = 0.1;
         body.hitYet = false;
-        body.inChains = [];
         body.slop = 1;
         //Add any other options
         if (options) {
@@ -404,48 +376,6 @@
         }, 30);
     }
 
-    function previousStepNeighbors(ball) {
-        return engine.world.bodies.filter(x => x.fruitType).filter((x) => {
-            return Matter.Collision.collides(x, ball) && x.fruitTypeNumber == ball.fruitTypeNumber - 1
-        });
-    }
-    function getChains(ball) {
-        let uglyChains = c(ball);
-        let cleanChains = flattenChains(uglyChains);
-        cleanChains = cleanChains.map(x => [ball].concat(x));
-        return cleanChains;
-    }
-    function c(ball) {
-        let neighbors = previousStepNeighbors(ball);
-        neighbors = neighbors.map((x) => {
-            return {
-                main: x,
-                next: c(x)
-            }
-        });
-        return neighbors;
-    }
-    function flattenChains(arr) {
-        let result = [];
-        for (let obj of arr) {
-            if (obj.next.length == 0) {
-                result.push([obj.main]);
-            } else {
-                let next = flattenChains(obj.next);
-                for (let n of next) {
-                    result.push([obj.main].concat(n));
-                }
-            }
-        }
-        return result;
-    }
-    function arrayEquals(a, b) {
-        return Array.isArray(a) &&
-            Array.isArray(b) &&
-            a.length === b.length &&
-            a.every((val, index) => b.includes(val));
-    }
-
 
     window.gameOver = function gameOver() {
         alert("Game Over! Score: " + scoreCount);
@@ -474,21 +404,6 @@
                 bodyB.fruitType &&
                 bodyA.fruitType === bodyB.fruitType
             ) {
-                let sharedChain;
-                if (bodyA.fruitType && bodyB.fruitType) {
-                    sharedChain = [bodyA.inChains.find(x => bodyB.inChains.includes(x))];
-                    console.log(sharedChain);
-                    if (sharedChain[0]) {
-                        chainList.find(x => x.chainId == sharedChain[0]).lastSeen = Date.now();
-                    }
-
-                    if (bodyA.inChains.length == 0) {
-                        sharedChain = bodyB.inChains;
-                    }
-                    if (bodyB.inChains.length == 0) {
-                        sharedChain = bodyA.inChains;
-                    }
-                }
 
                 //Handle fruit upgrades
                 if (bodyA.merged || bodyB.merged) return;
@@ -500,9 +415,7 @@
 
                 const newType = nextType(bodyA.fruitType);
 
-                addFruit(newType, averageX, averageY, {
-                    ...(sharedChain ? { inChains: sharedChain } : {})
-                });
+                addFruit(newType, averageX, averageY);
                 confetti(averageX, averageY, newType);
                 const scoreaddition = Math.pow(
                     Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
@@ -520,59 +433,6 @@
 
     });
 
-    setInterval(() => {
-        //Store any chains longer than 2 in the validChains array
-        let fruit = engine.world.bodies.filter((x) => x.fruitType);
-        let allChains = [...fruit.map(getChains)].flat().filter((x) => x.length > MIN_CHAIN_LENGTH);
-
-        //Ensure chainList has most up to date info
-        allChains.forEach((chain, i) => {
-            let existsInList = false;
-            let ids = chain.map(x => x.id);
-            chainList.forEach((chainInList, i) => {
-                if (arrayEquals(chainInList.ids, ids)) {
-                    //Chain is already accounted for
-                    existsInList = true;
-
-                    chainList[i].lastSeen = Date.now();
-                }
-            });
-
-
-            if (!existsInList) {
-                let chainId = Math.round(Math.random() * 1000000);
-                chainList.push({
-                    ids: ids,
-                    lastSeen: Date.now(),
-                    chainId: chainId,
-                    combined: 0
-                });
-                chain.forEach((body) => {
-                    body.inChains.push(chainId);
-                })
-            }
-        });
-
-        let expiredChains = chainList.filter((chain) => {
-            return Date.now() - chain.lastSeen > CHAIN_LIFE;
-        });
-        console.log(expiredChains.length == 0 ? 0 : expiredChains);
-
-        //Un-chainify any balls that were in a chain
-        engine.world.bodies.forEach((body) => {
-            if (!body.fruitType) return;
-            expiredChains.forEach((expiredChain) => {
-                body.inChains = body.inChains.filter(x => x != expiredChain.chainId);
-            });
-        });
-
-        //kill expired chains
-        chainList = chainList.filter((chain) => {
-            return Date.now() - chain.lastSeen < CHAIN_LIFE;
-        });
-
-        window.chainList = chainList;
-    }, 60);
 
     loadFromStorage();
 
