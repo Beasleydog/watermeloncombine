@@ -79,7 +79,9 @@
 
     let canvas, score, ctx;
 
-    const DROP_HEIGHT = 30;
+
+    const DEFAULT_DROP_HEIGHT = 30;
+    let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
     const DROP_MIN_INTERVAL = 500;
 
     //Import matter.js
@@ -106,6 +108,9 @@
     });
 
     document.body.appendChild(canvas);
+    let mouseX = canvas.width / 2;
+    let nextDropType = "red";
+    let currentDropType = "red";
     ctx = canvas.getContext("2d");
 
     let scoreCount = 0;
@@ -185,6 +190,16 @@
 
         window.requestAnimationFrame(render);
 
+        //Draw the next ball
+        ctx.save();
+        ctx.globalAlpha = 0.3;
+        ctx.fillStyle = TYPE_MAP[nextDropType].fillStyle;
+        let radius = TYPE_MAP[nextDropType].radius;
+        ctx.arc(mouseX - TYPES_MAP[currentDropType].radius, DROP_HEIGHT, radius * .8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.restore();
+
+
         for (var i = 0; i < bodies.length; i += 1) {
             ctx.save();
             ctx.beginPath();
@@ -259,7 +274,6 @@
 
             ctx.restore();
         }
-
 
 
         if (!document.hidden) {
@@ -338,8 +352,7 @@
                 (Math.pow(Math.random(), modifier) * Object.keys(TYPE_MAP).length) / 2
             )
             ];
-
-        setFruitStyle(displayFruit, nextDropType);
+        window.nextDropType = nextDropType;
     }
 
     function setFruitStyle(body, type) {
@@ -513,9 +526,7 @@
         isSensor: true,
     });
     Composite.add(engine.world, [displayFruit]);
-    let mouseX = canvas.width / 2;
 
-    let nextDropType = "red";
     setFruitStyle(displayFruit, nextDropType);
 
     let lastDropTime = 0;
@@ -584,11 +595,17 @@
         localStorage.setItem("lastInteract", id);
 
         drops++;
-        addFruit(nextDropType, mouseX, DROP_HEIGHT);
+        console.log(displayFruit)
+        addFruit(currentDropType, mouseX, DROP_HEIGHT);
+        currentDropType = nextDropType;
+        setFruitStyle(displayFruit, currentDropType);
         setNextDropFruit();
 
-        displayFruit.position.y = -999;
+        //Update DROP_HEIGHT so the "next up ball" moves too
+        DROP_HEIGHT = -999;
+        displayFruit.position.y = DROP_HEIGHT;
         setTimeout(() => {
+            DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
             displayFruit.position.y = DROP_HEIGHT;
         }, DROP_MIN_INTERVAL);
     };
