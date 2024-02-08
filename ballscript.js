@@ -18,7 +18,7 @@
     let canvas, score, ctx;
 
     const MIN_CHAIN_LENGTH = 2;
-    const CHAIN_LIFE = 3000;
+    const CHAIN_LIFE = 1000;
     const DROP_HEIGHT = 30;
     const DROP_MIN_INTERVAL = 500;
 
@@ -178,9 +178,9 @@
                 //Draw the number of the longest chain on the ball
                 //                 let chainsOnBall = getChains(bodies[i]);
                 //                 let longestChain = chainsOnBall.reduce((a, b) => a.length > b.length ? a : b, []);
-                // ctx.fillStyle = "black";
-                // ctx.font = "10px Arial";
-                // ctx.fillText(bodies[i].inChains, bodies[i].position.x, bodies[i].position.y);
+                ctx.fillStyle = "black";
+                ctx.font = "10px Arial";
+                ctx.fillText(bodies[i].inChains, bodies[i].position.x, bodies[i].position.y);
 
             }
             ctx.restore();
@@ -305,6 +305,7 @@
         body.friction = 0.1;
         body.hitYet = false;
         body.inChains = [];
+        body.slop = 1;
         //Add any other options
         if (options) {
             Object.assign(body, options);
@@ -312,6 +313,7 @@
 
         Composite.add(engine.world, [body]);
 
+        body.id = Math.round(Math.random() * 1000000);
 
         return body;
     }
@@ -441,7 +443,7 @@
         return Array.isArray(a) &&
             Array.isArray(b) &&
             a.length === b.length &&
-            a.every((val, index) => val === b[index]);
+            a.every((val, index) => b.includes(val));
     }
 
 
@@ -467,17 +469,27 @@
             if (bodyA.fruitType) bodyA.hitYet = true;
             if (bodyB.fruitType) bodyB.hitYet = true;
 
-            let sharedChain;
-            if (bodyA.fruitType && bodyB.fruitType) {
-                sharedChain = bodyA.inChains.find(x => bodyB.inChains.includes(x));
-
-            }
-
             if (
                 bodyA.fruitType &&
                 bodyB.fruitType &&
                 bodyA.fruitType === bodyB.fruitType
             ) {
+                let sharedChain;
+                if (bodyA.fruitType && bodyB.fruitType) {
+                    sharedChain = [bodyA.inChains.find(x => bodyB.inChains.includes(x))];
+                    console.log(sharedChain);
+                    if (sharedChain[0]) {
+                        chainList.find(x => x.chainId == sharedChain[0]).lastSeen = Date.now();
+                    }
+
+                    if (bodyA.inChains.length == 0) {
+                        sharedChain = bodyB.inChains;
+                    }
+                    if (bodyB.inChains.length == 0) {
+                        sharedChain = bodyA.inChains;
+                    }
+                }
+
                 //Handle fruit upgrades
                 if (bodyA.merged || bodyB.merged) return;
                 bodyA.merged = true;
@@ -488,7 +500,9 @@
 
                 const newType = nextType(bodyA.fruitType);
 
-                addFruit(newType, averageX, averageY);
+                addFruit(newType, averageX, averageY, {
+                    ...(sharedChain ? { inChains: sharedChain } : {})
+                });
                 confetti(averageX, averageY, newType);
                 const scoreaddition = Math.pow(
                     Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
@@ -503,10 +517,13 @@
         });
 
 
+
+    });
+
+    setInterval(() => {
         //Store any chains longer than 2 in the validChains array
         let fruit = engine.world.bodies.filter((x) => x.fruitType);
         let allChains = [...fruit.map(getChains)].flat().filter((x) => x.length > MIN_CHAIN_LENGTH);
-        console.log(allChains.map(x => x.length));
 
         //Ensure chainList has most up to date info
         allChains.forEach((chain, i) => {
@@ -536,9 +553,10 @@
             }
         });
 
-        let expiredChains = allChains.filter((chain) => {
+        let expiredChains = chainList.filter((chain) => {
             return Date.now() - chain.lastSeen > CHAIN_LIFE;
         });
+        console.log(expiredChains.length == 0 ? 0 : expiredChains);
 
         //Un-chainify any balls that were in a chain
         engine.world.bodies.forEach((body) => {
@@ -553,8 +571,8 @@
             return Date.now() - chain.lastSeen < CHAIN_LIFE;
         });
 
-        window.validChains = validChains;
-    });
+        window.chainList = chainList;
+    }, 60);
 
     loadFromStorage();
 
