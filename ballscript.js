@@ -18,7 +18,7 @@
         observer.observe(document.querySelector("body"));
     });
 
-    const TYPE_MAP = {
+    const TYPES_MAP = {
         red: {
             fillStyle: "red",
             radius: 10,
@@ -61,12 +61,18 @@
             shadowBlur: 80,
             effect: "pulse"
         },
-        pearl: {
-            fillStyle: "r",
-            radius: 50,
-            shadowBlur: 200,
-            effect: "dance"
+        gray: {
+            fillStyle: "gray",
+            radius: 240,
+            shadowBlur: 80,
+            effect: "pulse"
         },
+        magenta: {
+            fillStyle: "magenta",
+            radius: 240,
+            shadowBlur: 80,
+        },
+
     };
 
     const SPAM = false;
@@ -85,6 +91,8 @@
     //Create fullscreen transparent canvas
     canvas = document.createElement("canvas");
     canvas.width = 1366;
+    let TYPE_MAP;
+    t();
     canvas.height = 777;
     Object.assign(canvas.style, {
         position: "fixed",
@@ -450,12 +458,12 @@
 
                 const newType = nextType(bodyA.fruitType);
 
-                if (newType == "pearl") {
+                if (newType == "r") {
                     //Spawn confetti at random points throughout screen
                     let cel = setInterval(() => {
                         let rx = Math.random() * window.innerWidth;
                         let ry = Math.random() * window.innerHeight;
-                        confetti(rx, ry, "pearl")
+                        confetti(rx, ry, "r")
                     }, 100);
                     setTimeout(() => {
                         clearInterval(cel);
@@ -513,6 +521,58 @@
     let lastDropTime = 0;
     let drops = 0;
 
+    function t() {
+        TYPE_MAP = {
+            red: {
+                fillStyle: "red",
+                radius: 10,
+            },
+            blue: {
+                fillStyle: "blue",
+                radius: 40,
+            },
+            aqua: {
+                fillStyle: "#00FFFF",
+                radius: 70,
+            },
+            green: {
+                fillStyle: "green",
+                radius: 90,
+            },
+            yellow: {
+                fillStyle: "yellow",
+                radius: 120,
+            },
+            purple: {
+                fillStyle: "purple",
+                radius: 140,
+            },
+            orange: {
+                fillStyle: "orange",
+                radius: 170,
+            },
+            pink: {
+                fillStyle: "pink",
+                radius: 190,
+            },
+            brown: {
+                fillStyle: "brown",
+                radius: 200,
+            },
+            black: {
+                fillStyle: "black",
+                radius: 240,
+                shadowBlur: 80,
+                effect: "pulse"
+            },
+            r: {
+                fillStyle: "r",
+                radius: 50,
+                shadowBlur: 200,
+                effect: "dance"
+            },
+        };
+    }
     canvas.onmousemove = (e) => {
         mouseX = e.clientX / canvas.getBoundingClientRect().width * canvas.width;
         displayFruit.position.x = mouseX;
