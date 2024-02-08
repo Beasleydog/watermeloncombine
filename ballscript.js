@@ -1,6 +1,11 @@
+//As a wise man once said, "You can't cheat the game. You can't cheat the grind. You get out what you put in at the end of the day."
+//If you're trying to cheat or find out the higher level balls, just dont
+//Its so much more satisfying to get there on your own
+//😭🤑
+
 (async () => {
     const id = Math.random().toString(36).substring(2);
-
+    var popSound = new Audio('./pop.mp3');
     //Use intersection observer to await until the page is visible
     await new Promise((resolve) => {
         const observer = new IntersectionObserver((entries) => {
@@ -12,6 +17,57 @@
         );
         observer.observe(document.querySelector("body"));
     });
+
+    const TYPE_MAP = {
+        red: {
+            fillStyle: "red",
+            radius: 10,
+        },
+        blue: {
+            fillStyle: "blue",
+            radius: 40,
+        },
+        aqua: {
+            fillStyle: "#00FFFF",
+            radius: 70,
+        },
+        green: {
+            fillStyle: "green",
+            radius: 90,
+        },
+        yellow: {
+            fillStyle: "yellow",
+            radius: 120,
+        },
+        purple: {
+            fillStyle: "purple",
+            radius: 140,
+        },
+        orange: {
+            fillStyle: "orange",
+            radius: 170,
+        },
+        pink: {
+            fillStyle: "pink",
+            radius: 190,
+        },
+        brown: {
+            fillStyle: "brown",
+            radius: 200,
+        },
+        black: {
+            fillStyle: "black",
+            radius: 240,
+            shadowBlur: 80,
+            effect: "pulse"
+        },
+        pearl: {
+            fillStyle: "r",
+            radius: 50,
+            shadowBlur: 200,
+            effect: "dance"
+        },
+    };
 
     const SPAM = false;
 
@@ -114,7 +170,7 @@
     Runner.run(runner, engine);
     let RAINBOW_COLOR;
     function render() {
-        RAINBOW_COLOR = `hsl(${(Date.now() / 10) % 360}, 100%, 50%)`;
+        RAINBOW_COLOR = `hsl(${(Date.now() / 5) % 360}, 100%, 50%)`;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         var bodies = Composite.allBodies(engine.world);
@@ -126,18 +182,40 @@
             ctx.beginPath();
 
             ctx.fillStyle = bodies[i].render.fillStyle;
-            if (bodies[i].render.fillStyle === "rainbow") {
+            if (bodies[i].render.fillStyle === "r") {
                 ctx.fillStyle = RAINBOW_COLOR;
             }
-
             const blurAmount = bodies[i].render.shadowBlur;
-            ctx.shadowBlur = blurAmount
-                ? blurAmount *
-                (Math.abs(((Date.now() / 50) % blurAmount) - blurAmount / 2) /
-                    blurAmount)
-                : 0;
+            ctx.shadowBlur = blurAmount;
+
+            if (bodies[i].fruitType) {
+                const typeObject = TYPE_MAP[bodies[i].fruitType];
+
+                if (typeObject.effect === "pulse") {
+                    ctx.shadowBlur = blurAmount
+                        ? blurAmount *
+                        (Math.abs(((Date.now() / 50) % blurAmount) - blurAmount / 2) /
+                            blurAmount)
+                        : 0;
+                }
+                if (typeObject.effect === "dance") {
+                    //Make offset move in a circle
+                    const offset = 50;
+                    const x = Math.cos(Date.now() / 500) * offset;
+                    const y = Math.sin(Date.now() / 500) * offset;
+                    ctx.shadowOffsetX = x;
+                    ctx.shadowOffsetY = y;
+                }
+                if (typeObject.effect === "explode") {
+                    if (Date.now() % 7 < 1) {
+                        //Spawn confetti
+                        console.log("spawn");
+                        confetti(bodies[i].position.x, bodies[i].position.y, bodies[i].fruitType);
+                    }
+                }
+            }
             ctx.shadowColor =
-                bodies[i].render.shadowColor || bodies[i].render.fillStyle;
+                bodies[i].render.shadowColor || ctx.fillStyle;
 
             if (bodies[i].text) {
                 ctx.font = "30px Arial";
@@ -216,59 +294,12 @@
         }
     });
 
-    const TYPE_MAP = {
-        red: {
-            fillStyle: "red",
-            radius: 10,
-        },
-        blue: {
-            fillStyle: "blue",
-            radius: 40,
-        },
-        aqua: {
-            fillStyle: "#00FFFF",
-            radius: 70,
-        },
-        green: {
-            fillStyle: "green",
-            radius: 90,
-        },
-        yellow: {
-            fillStyle: "yellow",
-            radius: 120,
-        },
-        purple: {
-            fillStyle: "purple",
-            radius: 140,
-        },
-        orange: {
-            fillStyle: "orange",
-            radius: 170,
-        },
-        pink: {
-            fillStyle: "pink",
-            radius: 190,
-        },
-        brown: {
-            fillStyle: "brown",
-            radius: 200,
-        },
-        black: {
-            fillStyle: "black",
-            radius: 240,
-            shadowBlur: 80,
-        },
-        pearl: {
-            fillStyle: "rainbow",
-            radius: 50,
-        },
-    };
+
     function nextType(currentType) {
         const typeArray = Object.keys(TYPE_MAP);
         const currentIndex = typeArray.indexOf(currentType);
         return typeArray[currentIndex + 1];
     }
-
     function addFruit(type, x, y, options) {
         const body = Bodies.circle(x, y, TYPE_MAP[type].radius);
         setFruitStyle(body, type);
@@ -277,7 +308,7 @@
         body.restitution = 0.7;
         body.friction = 0.1;
         body.hitYet = false;
-        body.slop = 1;
+        body.slop = .5;
         //Add any other options
         if (options) {
             Object.assign(body, options);
@@ -289,6 +320,7 @@
 
         return body;
     }
+    window.addFruit = addFruit;
 
     function setNextDropFruit() {
         let modifier = Math.max(Math.round(6 - drops / 100), 3);
@@ -357,7 +389,7 @@
             }, 2000);
         }
     }
-
+    window.confetti = confetti;
     function clearBalls() {
         engine.world.gravity.y = 0;
         lastTooHigh = Number.MAX_VALUE;
@@ -410,10 +442,25 @@
                 bodyA.merged = true;
                 bodyB.merged = true;
 
+                popSound.cloneNode(true).play();
+
+
                 const averageX = (bodyA.position.x + bodyB.position.x) / 2;
                 const averageY = (bodyA.position.y + bodyB.position.y) / 2;
 
                 const newType = nextType(bodyA.fruitType);
+
+                if (newType == "pearl") {
+                    //Spawn confetti at random points throughout screen
+                    let cel = setInterval(() => {
+                        let rx = Math.random() * window.innerWidth;
+                        let ry = Math.random() * window.innerHeight;
+                        confetti(rx, ry, "pearl")
+                    }, 100);
+                    setTimeout(() => {
+                        clearInterval(cel);
+                    }, 3000);
+                }
 
                 addFruit(newType, averageX, averageY);
                 confetti(averageX, averageY, newType);
