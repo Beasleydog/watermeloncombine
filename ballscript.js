@@ -548,7 +548,7 @@
         TYPE_MAP = {
             red: {
                 fillStyle: "red",
-                radius: 8,
+                radius: 12,
             },
             blue: {
                 fillStyle: "blue",
