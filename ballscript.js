@@ -2,7 +2,14 @@
 //If you're trying to cheat or find out the higher level balls, just dont
 //Its so much more satisfying to get there on your own
 //😭🤑
-
+if (window.innerHeight < 500) {
+    document.body.innerHTML = "";
+    document.body.style.height = "0px";
+    document.body.style.width = "0px";
+    document.body.style.overflow = "hidden";
+} else {
+    document.body.style.display = "unset";
+}
 (async () => {
     let warnText = document.getElementById("warn");
     warnText.style.zIndex = "99999";
