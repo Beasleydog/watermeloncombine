@@ -381,7 +381,7 @@ if (window.innerHeight < 500) {
 
         return body;
     }
-    window.addFruit = addFruit;
+    // window.addFruit = addFruit;
 
     function setNextDropFruit() {
         let sameCount = 4;
