@@ -4,6 +4,20 @@
 //😭🤑
 
 (async () => {
+    let warnText = document.getElementById("warn");
+    warnText.style.zIndex = "99999";
+    warnText.style.position = "fixed";
+    warnText.style.left = "50%";
+    warnText.style.top = "30%";
+    warnText.style.transform = "translate(-50%, -50%)";
+    warnText.style.fontSize = "20px";
+    warnText.style.userSelect = "none";
+
+    //If hash includes "noembed" then remove warnText
+    if (window.location.hash.includes("noembed")) {
+        warnText.remove();
+    }
+
     const id = Math.random().toString(36).substring(2);
     var popSound = new Audio('./pop.mp3');
     //Use intersection observer to await until the page is visible
