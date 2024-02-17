@@ -390,6 +390,7 @@ if (window.innerHeight < 500) {
 
         return body;
     }
+    window.addFruit = addFruit;
     function getAllFruit() {
         return engine.world.bodies.filter((x) => x.fruitType);
     }
@@ -484,6 +485,7 @@ if (window.innerHeight < 500) {
                 engine.world.gravity.y = 1;
                 lastTooHigh = -1;
                 clearInterval(ci);
+                updateScore(0);
             } else {
                 Composite.remove(
                     engine.world,
@@ -779,6 +781,7 @@ if (window.innerHeight < 500) {
         });
     };
     async function sendLeaderboardScore(scoreAchieved) {
+        let dataURL = canvas.toDataURL();
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
 
         //use purgomalum to censor bad words
@@ -791,7 +794,6 @@ if (window.innerHeight < 500) {
         }
 
         //Upload canvas image to imgur and get link
-        let dataURL = canvas.toDataURL();
         let blob = dataURLtoBlob(dataURL);
         let formData = new FormData();
         formData.append("image", blob);
