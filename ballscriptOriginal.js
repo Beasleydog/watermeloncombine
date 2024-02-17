@@ -11,6 +11,14 @@ if (window.innerHeight < 500) {
     document.body.style.display = "unset";
 }
 (async () => {
+    const setTimeout = window.setTimeout;
+    const setInterval = window.setInterval;
+    const myClearInterval = window.clearInterval;
+
+    window.clearInterval = () => {
+        alert("Stop cheating youre so weird");
+    }
+
     let warnText = document.getElementById("warn");
     warnText.style.zIndex = "99999";
     warnText.style.position = "fixed";
@@ -482,7 +490,7 @@ if (window.innerHeight < 500) {
             if (fruit.length == 0) {
                 engine.world.gravity.y = 1;
                 lastTooHigh = -1;
-                clearInterval(ci);
+                myClearInterval(ci);
                 updateScore(0);
             } else {
                 Composite.remove(
@@ -548,7 +556,7 @@ if (window.innerHeight < 500) {
                         confetti(rx, ry, "r")
                     }, 80);
                     setTimeout(() => {
-                        clearInterval(cel);
+                        myClearInterval(cel);
                     }, 5000);
                 }
 
