@@ -124,7 +124,7 @@ if (window.innerHeight < 500) {
         left: "50vw",
         transform: "translateX(-50%)",
         ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
-        zIndex: 999999,
+        zIndex: 100,
         backdropFilter: "blur(1px)",
         background: "rgb(255 255 255 / 10%)",
         border: "1px solid black",

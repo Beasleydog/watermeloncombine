@@ -5,12 +5,12 @@
     background:white;
     font-size:30px;
     width: auto;
-    height:"40px";
     border-radius: 5px;
     box-shadow: rgb(211, 210, 210) 0px 0px 5px;
     cursor:pointer;
     user-select: none;
     line-height: 40px;
+    z-index:999999999;
 }
 #leaderboardPopup{
     position: absolute;
