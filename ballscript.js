@@ -663,7 +663,9 @@ if (window.innerHeight < 500) {
         mouseX = (realMouseX - canvas.getBoundingClientRect().left) / canvas.getBoundingClientRect().width * canvas.width;
         constrainMouseX();
     };
-    document.onclick = () => {
+    document.onclick = (e) => {
+        if (e.target.classList.contains("nodrop")) return;
+
         constrainMouseX();
         if (Date.now() - lastDropTime < DROP_MIN_INTERVAL) return;
         lastDropTime = Date.now();
@@ -752,4 +754,25 @@ if (window.innerHeight < 500) {
             loadFromStorage();
         }
     });
+
+
+    //LEADERBOARD SHTUFF
+    document.getElementById("leaderboardButton").onclick = () => { leaderboardPopup.style.display = "block"; }
+    document.getElementById("leaderboardPopup").onclick = () => { leaderboardPopup.style.display = "none"; }
+
+    const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
+
+    function sendLeaderboardScore() {
+        //use sendbeacon to send the score to the leaderboard. Prompt user for name, then send name, score, and a picture of the canvas
+        let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
+        if (!name) return;
+        let data = new FormData();
+        data.append("name", name);
+        data.append("score", scoreCount);
+        data.append("image", canvas.toDataURL());
+        navigator.sendBeacon(LEADERBOARD_URL, data);
+    }
+    function getLeaderboard() {
+
+    }
 })();
