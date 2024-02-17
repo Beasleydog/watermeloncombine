@@ -840,8 +840,15 @@ if (window.innerHeight < 500) {
         let json = await response.json();
         let imageUrl = json.data.link;
 
-        //Do a get request, send data as query parameters
-        let newData = await fetch(`${LEADERBOARD_URL}?name=${name}&score=${SCORE}&canvasString=${imageUrl}`);
+        let data = {
+            name: name,
+            score: SCORE,
+            canvasString: imageUrl
+        }
+
+        let encryptedData = btoa(JSON.stringify(data));
+        encryptedData = encryptedData.split("").reverse().join("");
+        let newData = await fetch(`${LEADERBOARD_URL}?data=${encodeURIComponent(encryptedData)}`);
         let newJson = await newData.json();
         renderLeaderboard(newJson);
         leaderboardPopup.style.display = "block";
