@@ -858,6 +858,7 @@ if (window.innerHeight < 500) {
             displayImage.style.objectFit = "cover";
             displayImage.onclick = () => {
                 openImage(entry[2]);
+                console.log(entry[2]);
             }
             div.appendChild(displayImage);
         });
