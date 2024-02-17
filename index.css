@@ -1,0 +1,42 @@
+#leaderboardButton{
+    position: absolute;
+    top:5px;
+    right:5px;
+    background:white;
+    font-size:30px;
+    width: auto;
+    height:"40px";
+    border-radius: 5px;
+    box-shadow: rgb(211, 210, 210) 0px 0px 5px;
+    cursor:pointer;
+    user-select: none;
+    line-height: 40px;
+}
+#leaderboardPopup{
+    position: absolute;
+    top:0px;
+    left:0px;
+    background:rgba(226, 226, 226, 0.311);
+    width:100vw;
+    height:100vh;
+    border-radius: 5px;
+    box-shadow: rgb(211, 210, 210) 0px 0px 5px;
+    cursor:pointer;
+    user-select: none;
+    z-index:999999999;
+}
+#leaderboardContent{
+    position: absolute;
+    top:50%;
+    left:50%;
+    transform: translate(-50%,-50%);
+    background:white;
+    width:80vw;
+    height:80vh;
+    border-radius: 5px;
+    box-shadow: rgb(211, 210, 210) 0px 0px 5px;
+    user-select: none;
+    cursor: initial;
+    line-height: 40px;
+    z-index:9999;
+}
