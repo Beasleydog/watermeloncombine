@@ -1,3 +1,4 @@
+CALL git add --all
 CALL git commit -am "changes"
 CALL copy /y localIndex.html index.html
 CALL javascript-obfuscator ballscript.js
