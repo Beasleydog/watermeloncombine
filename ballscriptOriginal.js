@@ -178,15 +178,10 @@ if (window.innerHeight < 500) {
         Bodies = Matter.Bodies,
         Composite = Matter.Composite;
 
-    window.Engine = Engine;
-    window.Runner = Runner;
-    window.Bodies = Bodies;
-    window.Composite = Composite;
 
     // create an engine
     var engine = Engine.create();
     engine.enableSleeping = false;
-    window.engine = engine;
 
     //Create fruit that ignores gravity and follows mouseX
     const displayFruit = Bodies.circle(canvas.width / 2, DROP_HEIGHT, 10, {
@@ -390,7 +385,6 @@ if (window.innerHeight < 500) {
 
         return body;
     }
-    window.addFruit = addFruit;
     function getAllFruit() {
         return engine.world.bodies.filter((x) => x.fruitType);
     }
@@ -415,7 +409,6 @@ if (window.innerHeight < 500) {
                 sameCount = 0;
             }
         }
-        window.nextDropType = nextDropType;
         localStorage.setItem("nextDropType", nextDropType);
         score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
     }
@@ -475,7 +468,6 @@ if (window.innerHeight < 500) {
             }, 2000);
         }
     }
-    window.confetti = confetti;
     function clearBalls() {
         engine.world.gravity.y = 0;
         lastTooHigh = Number.MAX_VALUE;
@@ -496,7 +488,7 @@ if (window.innerHeight < 500) {
     }
 
 
-    window.gameOver = function gameOver(manual) {
+    function gameOver(manual) {
         alert("Game Over! Score: " + scoreCount);
         if (manual) {
             clearValues();
@@ -865,13 +857,18 @@ if (window.innerHeight < 500) {
             displayImage.style.width = "100px";
             displayImage.style.objectFit = "cover";
             displayImage.onclick = () => {
-                window.open(entry[2]);
+                openImage(entry[2]);
             }
             div.appendChild(displayImage);
         });
     }
     getLeaderboard();
     setInterval(getLeaderboard, 60 * 1000);
-    window.getLeaderboard = getLeaderboard;
-    window.sendLeaderboardScore = sendLeaderboardScore;
+
+
+    //Open a new window and write an image to it
+    function openImage(url) {
+        let win = window.open();
+        win.document.write(`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`);
+    }
 })();
