@@ -366,7 +366,13 @@ if (window.innerHeight < 500) {
         return typeArray[currentIndex + 1];
     }
     function addFruit(type, x, y, options) {
-        const body = Bodies.circle(x, y, TYPE_MAP[type].radius);
+        let body
+        if (TYPE_MAP[type].type === "c") {
+            body = Bodies.circle(x, y, TYPE_MAP[type].radius);
+        } else if (TYPE_MAP[type].type === "t") {
+            //Make triangle
+            body = Bodies.polygon(x, y, 3, TYPE_MAP[type].radius);
+        }
         setFruitStyle(body, type);
         body.fruitType = type;
         body.fruitTypeNumber = Object.keys(TYPE_MAP).indexOf(type);
@@ -594,51 +600,67 @@ if (window.innerHeight < 500) {
             red: {
                 fillStyle: "red",
                 radius: 12,
+                type: "c"
             },
             blue: {
                 fillStyle: "blue",
                 radius: 45,
+                type: "c"
             },
             aqua: {
                 fillStyle: "#00FFFF",
                 radius: 75,
+                type: "c"
             },
             green: {
                 fillStyle: "green",
                 radius: 100,
+                type: "c"
             },
             yellow: {
                 fillStyle: "yellow",
                 radius: 130,
+                type: "c"
             },
             purple: {
                 fillStyle: "purple",
                 radius: 155,
+                type: "c"
             },
             orange: {
                 fillStyle: "orange",
                 radius: 185,
+                type: "c"
             },
             pink: {
                 fillStyle: "pink",
                 radius: 200,
+                type: "c"
             },
             brown: {
                 fillStyle: "brown",
                 radius: 215,
+                type: "c"
             },
             black: {
                 fillStyle: "black",
                 radius: 260,
                 shadowBlur: 80,
-                effect: "pulse"
+                effect: "pulse",
+                type: "c"
             },
             r: {
                 fillStyle: "r",
                 radius: 50,
                 shadowBlur: 200,
-                effect: "dance"
+                effect: "dance",
+                type: "c"
             },
+            t: {
+                fillStyle: "t",
+                radius: 50,
+                type: "t",
+            }
         };
     }
     let realMouseX = mouseX;
@@ -663,6 +685,11 @@ if (window.innerHeight < 500) {
         constrainMouseX();
     };
     document.onclick = (e) => {
+        if (!e.isTrusted) {
+            alert("Cheating! Bye bye balls");
+            clearValues();
+            return;
+        }
         if (e.target.classList.contains("nodrop")) return;
 
         constrainMouseX();
