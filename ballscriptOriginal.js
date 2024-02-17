@@ -496,7 +496,7 @@ if (window.innerHeight < 500) {
 
     window.gameOver = function gameOver(manual) {
         alert("Game Over! Score: " + scoreCount);
-        if (!manual) sendLeaderboardScore();
+        if (!manual) sendLeaderboardScore(scoreCount);
 
         updateScore(0);
         clearBalls();
@@ -778,7 +778,7 @@ if (window.innerHeight < 500) {
             type: 'image/png'
         });
     };
-    async function sendLeaderboardScore() {
+    async function sendLeaderboardScore(scoreAchieved) {
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
 
         //use purgomalum to censor bad words
@@ -806,7 +806,7 @@ if (window.innerHeight < 500) {
         let imageUrl = json.data.link;
 
         //Do a get request, send data as query parameters
-        let newData = await fetch(`${LEADERBOARD_URL}?name=${name}&score=${scoreCount}&canvasString=${imageUrl}`);
+        let newData = await fetch(`${LEADERBOARD_URL}?name=${name}&score=${scoreAchieved}&canvasString=${imageUrl}`);
         let newJson = await newData.json();
         renderLeaderboard(newJson);
         leaderboardPopup.style.display = "block";
