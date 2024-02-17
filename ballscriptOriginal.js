@@ -846,10 +846,12 @@ if (window.innerHeight < 500) {
             div.classList.add("leaderboardEntry");
             div.classList.add("nodrop");
 
-            if (i == 0) div.style.color = "gold";
-
             div.innerText = `${i + 1}.  ${entry[0]} - ${entry[1]}`;
             leaderboard.appendChild(div);
+
+            let imageContainer = document.createElement("div");
+            div.appendChild(imageContainer);
+
             let displayImage = document.createElement("img");
             displayImage.classList.add("leaderboardImage");
             displayImage.classList.add("nodrop");
@@ -860,7 +862,12 @@ if (window.innerHeight < 500) {
                 openImage(entry[2]);
                 console.log(entry[2]);
             }
-            div.appendChild(displayImage);
+            imageContainer.appendChild(displayImage);
+
+            if (i == 0) {
+                div.style.color = "gold";
+                imageContainer.classList.add("leaderContainer");
+            }
         });
     }
     getLeaderboard();

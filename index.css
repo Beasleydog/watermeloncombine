@@ -48,13 +48,14 @@
     margin: 10px;
 }
 #leaderboardEntries{
-    height: calc(80vh - 60px);
+    height: calc(80vh - 90px);
     border-radius: 5px;
     padding-left:10px;
     overflow-y: scroll;
     display: flex;
     flex-direction: column;
     gap: 20px;
+    padding-top:30px;
 }
 .leaderboardImage{
     border-radius: 5px;
@@ -68,6 +69,19 @@
     justify-content: center;
     align-items: center;
     font-size:20px;
+}
+.leaderContainer{
+    position: relative;
+}
+.leaderContainer::before{
+    content: "👑";
+    position: absolute;
+    top: -33px;
+    right: -28px;
+    font-size: 45px;
+    color: gold;
+    transform: rotate(24deg);
+    filter: drop-shadow(2px -1px 2px gold);
 }
 *{
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
