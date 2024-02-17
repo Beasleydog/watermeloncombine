@@ -858,9 +858,12 @@ if (window.innerHeight < 500) {
             displayImage.src = entry[2];
             displayImage.style.width = "100px";
             displayImage.style.objectFit = "cover";
-            displayImage.onclick = () => {
+            displayImage.onclick = (e) => {
                 openImage(entry[2]);
                 console.log(entry[2]);
+                setTimeout(() => {
+                    leaderboardPopup.style.display = "block";
+                }, 0);
             }
             imageContainer.appendChild(displayImage);
 
