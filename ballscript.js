@@ -114,6 +114,7 @@ if (window.innerHeight < 500) {
     //Create fullscreen transparent canvas
     canvas = document.createElement("canvas");
     canvas.width = 1366;
+    canvas.id = "gameCanvas";
     let TYPE_MAP;
     t();
     canvas.height = 777;
@@ -158,6 +159,14 @@ if (window.innerHeight < 500) {
         paddingRight: "5px",
     });
     score.innerText = scoreCount;
+
+    score.onclick = () => {
+        //If the user clicks the score, prompt to confirm and then restart
+        if (confirm("Are you sure you want to restart?")) {
+            gameOver();
+        }
+    }
+
     document.body.appendChild(score);
 
     await new Promise((resolve) => {
@@ -381,8 +390,9 @@ if (window.innerHeight < 500) {
 
         return body;
     }
-    // window.addFruit = addFruit;
-
+    function getAllFruit() {
+        return engine.world.bodies.filter((x) => x.fruitType);
+    }
     function setNextDropFruit() {
         let sameCount = 4;
         let modifier = Math.max(Math.round(6 - drops / 100), 3);
