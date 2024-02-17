@@ -870,6 +870,20 @@ if (window.innerHeight < 500) {
     //Open a new window and write an image to it
     function openImage(url) {
         let win = window.open();
-        win.document.write(`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`);
+        win.document.write(`<div style="
+        thisisxssablelolbutidontcarecuzitwouldbekindafunnyifsomebodydidit:true;
+        background-image: url(${url});
+        width: 100vw;
+        height: 100vh;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+    ">
+        
+    </div>`);
     }
 })();
+if (location.href.includes("file") && location.href.includes("/index.")) alert("Use localindex");
