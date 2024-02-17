@@ -41,3 +41,34 @@
     line-height: 40px;
     z-index:9999;
 }
+#leaderboardHeader{
+    font-size: 40px;
+    font-weight: bold;
+    text-align: center;
+    margin: 10px;
+}
+#leaderboardEntries{
+    height: calc(80vh - 60px);
+    border-radius: 5px;
+    padding-left:10px;
+    overflow-y: scroll;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.leaderboardImage{
+    border-radius: 5px;
+    box-shadow: rgb(211, 210, 210) 0px 0px 5px;
+    cursor: pointer;
+}
+.leaderboardEntry{
+    font-weight:bold;
+    display:flex;
+    gap:10px;
+    justify-content: center;
+    align-items: center;
+    font-size:20px;
+}
+*{
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}

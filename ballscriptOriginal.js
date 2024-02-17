@@ -162,8 +162,8 @@ if (window.innerHeight < 500) {
 
     score.onclick = () => {
         //If the user clicks the score, prompt to confirm and then restart
-        if (confirm("Are you sure you want to restart?")) {
-            gameOver();
+        if (confirm("Are you sure you want to restart? Manually restarting means your score won't have a chance to go on the leaderboard")) {
+            gameOver(true);
         }
     }
 
@@ -494,8 +494,9 @@ if (window.innerHeight < 500) {
     }
 
 
-    window.gameOver = function gameOver() {
+    window.gameOver = function gameOver(manual) {
         alert("Game Over! Score: " + scoreCount);
+        if (!manual) sendLeaderboardScore();
 
         updateScore(0);
         clearBalls();
@@ -762,17 +763,105 @@ if (window.innerHeight < 500) {
 
     const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
 
-    function sendLeaderboardScore() {
-        //use sendbeacon to send the score to the leaderboard. Prompt user for name, then send name, score, and a picture of the canvas
+
+    function dataURLtoBlob(dataURL) {
+        let array, binary, i, len;
+        binary = atob(dataURL.split(',')[1]);
+        array = [];
+        i = 0;
+        len = binary.length;
+        while (i < len) {
+            array.push(binary.charCodeAt(i));
+            i++;
+        }
+        return new Blob([new Uint8Array(array)], {
+            type: 'image/png'
+        });
+    };
+    async function sendLeaderboardScore() {
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
-        if (!name) return;
-        let data = new FormData();
-        data.append("name", name);
-        data.append("score", scoreCount);
-        data.append("image", canvas.toDataURL());
-        navigator.sendBeacon(LEADERBOARD_URL, data);
+
+        //use purgomalum to censor bad words
+        if (name) {
+            let response = await fetch(`https://www.purgomalum.com/service/json?text=${name}`);
+            let json = await response.json();
+            name = json.result;
+        } else {
+            return;
+        }
+
+        //Upload canvas image to imgur and get link
+        let dataURL = canvas.toDataURL();
+        let blob = dataURLtoBlob(dataURL);
+        let formData = new FormData();
+        formData.append("image", blob);
+        let response = await fetch("https://api.imgur.com/3/image", {
+            method: "POST",
+            headers: {
+                Authorization: "Client-ID a23332bdafb3fb9"
+            },
+            body: formData
+        });
+        let json = await response.json();
+        let imageUrl = json.data.link;
+
+        //Do a get request, send data as query parameters
+        let newData = await fetch(`${LEADERBOARD_URL}?name=${name}&score=${scoreCount}&canvasString=${imageUrl}`);
+        let newJson = await newData.json();
+        renderLeaderboard(newJson);
+        leaderboardPopup.style.display = "block";
+
+        //Scroll to the leaderboard item that has a matching image 
+        let leaderboard = document.getElementById("leaderboardEntries");
+        let leaderboardImages = leaderboard.getElementsByClassName("leaderboardImage");
+        for (let i = 0; i < leaderboardImages.length; i++) {
+            if (leaderboardImages[i].src == imageUrl) {
+                leaderboard.scrollTop = leaderboardImages[i].offsetTop;
+
+                leaderboardImages[i].style.border = "5px solid black";
+                setTimeout(() => {
+                    leaderboardImages[i].style.border = "none";
+                }, 5000);
+                break;
+            }
+        }
     }
     function getLeaderboard() {
+        //Fetch the leaderboard and display it in the popup
+        fetch(LEADERBOARD_URL)
+            .then((response) => response.json())
+            .then((data) => {
+                renderLeaderboard(data);
+            });
+    };
+    function renderLeaderboard(data) {
+        data = data.sort((a, b) => b[1] - a[1]);
 
+        let leaderboard = document.getElementById("leaderboardEntries");
+        leaderboard.innerHTML = "";
+        data.forEach((entry, i) => {
+            let div = document.createElement("div");
+            div.classList.add("leaderboardEntry");
+            div.classList.add("nodrop");
+
+            if (i == 0) div.style.color = "gold";
+
+            div.innerText = `${i + 1}.  ${entry[0]} - ${entry[1]}`;
+            leaderboard.appendChild(div);
+            let displayImage = document.createElement("img");
+            displayImage.classList.add("leaderboardImage");
+            displayImage.classList.add("nodrop");
+            displayImage.src = entry[2];
+            displayImage.style.width = "100px";
+            displayImage.style.objectFit = "cover";
+            displayImage.onclick = () => {
+                window.open(entry[2]);
+            }
+            div.appendChild(displayImage);
+        });
     }
+    getLeaderboard();
+    setInterval(getLeaderboard, 60 * 1000);
+    window.getLeaderboard = getLeaderboard;
+    window.sendLeaderboardScore = sendLeaderboardScore;
 })();
