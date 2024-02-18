@@ -330,20 +330,24 @@ if (window.innerHeight < 500) {
         if (!document.hidden) {
             if (localStorage.getItem("lastInteract") !== id) return;
             //Create array of all fruit in simple object form with only necessary properties
-            const stringBodys = bodies
-                .filter((body) => body.fruitType)
-                .map((body) => {
-                    return ({
-                        position: body.position,
-                        velocity: body.velocity,
-                        fruitType: body.fruitType,
-                    });
-                });
-            localStorage.setItem("game", JSON.stringify(stringBodys));
-            localStorage.setItem("score", scoreCount)
+            updateLocalStorage();
         }
     }
     render();
+
+    function updateLocalStorage() {
+        const stringBodys = bodies
+            .filter((body) => body.fruitType)
+            .map((body) => {
+                return ({
+                    position: body.position,
+                    velocity: body.velocity,
+                    fruitType: body.fruitType,
+                });
+            });
+        localStorage.setItem("game", JSON.stringify(stringBodys));
+        localStorage.setItem("score", scoreCount)
+    }
 
     function loadFromStorage() {
         engine.world.bodies
@@ -492,6 +496,7 @@ if (window.innerHeight < 500) {
                 lastTooHigh = -1;
                 myClearInterval(ci);
                 updateScore(0);
+                updateLocalStorage();
             } else {
                 Composite.remove(
                     engine.world,
