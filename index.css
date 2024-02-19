@@ -52,6 +52,7 @@
     border-radius: 5px;
     padding-left:10px;
     overflow-y: scroll;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -69,6 +70,19 @@
     justify-content: center;
     align-items: center;
     font-size:20px;
+}
+
+.leaderboardEntry:last-child::after{
+    content: "← This person sucks 💀";
+    color: red;
+    font-size: 20px;
+    font-weight: bold;
+    margin-right: 10px;
+    transform: rotate(-5deg) translateY(-15px);
+    font-size: 13px;
+}
+.leaderboardEntry:last-child{
+    transform:translateX(88px);
 }
 .leaderContainer{
     position: relative;
