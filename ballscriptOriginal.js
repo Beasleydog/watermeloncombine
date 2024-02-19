@@ -2,7 +2,7 @@
 //If you're trying to cheat or find out the higher level balls, just dont
 //Its so much more satisfying to get there on your own
 //😭🤑
-if (window.innerHeight < 500) {
+if (window.innerHeight < 500 && !(window === window.top)) {
     document.body.innerHTML = "";
     document.body.style.height = "0px";
     document.body.style.width = "0px";
@@ -190,6 +190,8 @@ if (window.innerHeight < 500) {
     // create an engine
     var engine = Engine.create();
     engine.enableSleeping = false;
+    engine.positionIterations = 10;
+    engine.velocityIterations = 20;
 
     //Create fruit that ignores gravity and follows mouseX
     const displayFruit = Bodies.circle(canvas.width / 2, DROP_HEIGHT, 10, {
@@ -459,7 +461,7 @@ if (window.innerHeight < 500) {
         if (SPAM) return;
         const color = TYPE_MAP[type].fillStyle;
         let r = TYPE_MAP[type].radius;
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 15; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 0.002;
             const confetti = Bodies.circle(
