@@ -216,14 +216,14 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         -100,
         canvas.height / 2,
         200,
-        canvas.height,
+        canvas.height * 3,
         { isStatic: true }
     );
     var rightWall = Bodies.rectangle(
         canvas.width + 100,
         canvas.height / 2,
         200,
-        canvas.height,
+        canvas.height * 3,
         { isStatic: true }
     );
     Composite.add(engine.world, [ground, leftWall, rightWall]);
@@ -332,6 +332,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
                 });
             localStorage.setItem("game", JSON.stringify(stringBodys));
             localStorage.setItem("score", scoreCount)
+            localStorage.setItem("drops", drops);
         }
     }
     render();
@@ -350,6 +351,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             f.velocity = body.velocity;
         });
         updateScore(localStorage.getItem("score"));
+
+        drops = Number(localStorage.getItem("drops")) || 0;
 
         currentDropType = localStorage.getItem("currentDropType") || "red";
         setFruitStyle(displayFruit, currentDropType);
@@ -529,6 +532,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         clearBalls();
         localStorage.removeItem("game");
         localStorage.removeItem("score");
+        localStorage.removeItem("drops");
         drops = 0;
         currentDropType = "red";
         nextDropType = "red";
@@ -648,6 +652,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     setFruitStyle(displayFruit, nextDropType);
 
     let lastDropTime = 0;
+
     let drops = 0;
 
     function t() {
