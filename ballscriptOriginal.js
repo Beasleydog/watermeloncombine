@@ -167,6 +167,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         paddingLeft: "5px",
         borderRadius: "3px",
         paddingRight: "5px",
+        cursor: "pointer",
     });
     score.innerText = scoreCount;
     score.classList.add("nodrop");
