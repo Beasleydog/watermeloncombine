@@ -158,7 +158,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     Object.assign(score.style, {
         position: "fixed",
         top: "5px",
-        left: "20px",
+        left: "0px",
         zIndex: 999999,
         userSelect: "none",
         fontSize: "40px",
