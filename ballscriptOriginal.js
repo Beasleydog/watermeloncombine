@@ -11,6 +11,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     document.body.style.display = "unset";
 }
 (async () => {
+    const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
+
     const setTimeout = window.setTimeout;
     const setInterval = window.setInterval;
     const myClearInterval = window.clearInterval;
@@ -763,6 +765,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         if (DROP_MIN_INTERVAL > 1000) DROP_MIN_INTERVAL = 1000;
 
         addFruit(currentDropType, mouseX, DROP_HEIGHT);
+        logFruitAdded();
+
         currentDropType = nextDropType;
         localStorage.setItem("currentDropType", currentDropType);
         setFruitStyle(displayFruit, currentDropType);
@@ -886,7 +890,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         leaderboardPopup.style.display = "none";
     }
 
-    const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
 
     let CASUAL_LEADERBOARD = [];
     let RANKED_LEADERBOARD = [];
@@ -1068,6 +1071,19 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             CASUAL_LEADERBOARD = [];
             RANKED_LEADERBOARD = [];
         }, 60 * 1000);
+    }
+
+
+    function logFruitAdded() {
+        //This is a click. Update the clicks stored in local storage. If we have reached ten clicks, send a request to the server to log the clicks. Include 10 as the batchAmount
+
+        let clicks = Number(localStorage.getItem("clicks") || 0);
+        clicks++;
+        localStorage.setItem("clicks", clicks);
+        if (clicks == 10) {
+            fetch(LEADERBOARD_URL + "?clicks=" + clicks);
+            localStorage.setItem("clicks", 0);
+        }
     }
 })();
 if (location.href.includes("file") && location.href.includes("/index.")) alert("Use localindex");
