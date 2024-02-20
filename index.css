@@ -48,7 +48,7 @@
     margin: 10px;
 }
 #leaderboardEntries{
-    height: calc(80vh - 90px);
+    height: calc(80vh - 110px);
     border-radius: 5px;
     padding-left:10px;
     overflow-y: scroll;
@@ -96,6 +96,27 @@
     color: gold;
     transform: rotate(24deg);
     filter: drop-shadow(2px -1px 2px gold);
+}
+#leaderboardSubtitle{
+    text-align: center;
+    margin: 0px;
+    padding: 0px;
+    height: 15px;
+    font-size: 15px;
+    line-height: 15px;
+    padding-bottom: 5px;
+}
+#leaderboardModeToggle{
+    position: absolute;
+    top: 13px;
+    right: calc(calc(calc(80vw - 370px)/4) - 28px);
+    text-decoration: underline;
+    cursor: pointer;
+}
+#rankedToggleContainer{
+    position: absolute;
+    top:60px;
+    left:15px;
 }
 *{
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

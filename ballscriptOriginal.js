@@ -113,6 +113,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
     let DROP_MIN_INTERVAL = 500;
 
+    let CURRENT_MODE = localStorage.getItem("mode") || "cas";
+
     //Import matter.js
     const script = document.createElement("script");
     script.src =
@@ -167,7 +169,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         paddingRight: "5px",
     });
     score.innerText = scoreCount;
-
+    score.classList.add("nodrop");
     score.onclick = () => {
         //If the user clicks the score, prompt to confirm and then restart
         if (confirm("Are you sure you want to restart? Manually restarting means your score won't have a chance to go on the leaderboard")) {
@@ -240,19 +242,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 
         window.requestAnimationFrame(render);
 
-        // //Draw the next ball
-        // ctx.save();
-        // ctx.globalAlpha = 0.2;
-        // //Make bigger balls slightly more opaque
-        // ctx.globalAlpha += (TYPES_MAP[currentDropType].radius / 200) * 0.8;
-
-        // ctx.fillStyle = TYPE_MAP[nextDropType].fillStyle;
-        // let radius = TYPE_MAP[nextDropType].radius;
-        // ctx.arc(mouseX - TYPES_MAP[currentDropType].radius - radius / 2, DROP_HEIGHT, radius * .8, 0, 2 * Math.PI);
-        // ctx.fill();
-        // ctx.restore();
-
-
         for (var i = 0; i < bodies.length; i += 1) {
             ctx.save();
             ctx.beginPath();
@@ -285,7 +274,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
                 if (typeObject.effect === "explode") {
                     if (Date.now() % 7 < 1) {
                         //Spawn confetti
-                        console.log("spawn");
                         confetti(bodies[i].position.x, bodies[i].position.y, bodies[i].fruitType);
                     }
                 }
@@ -366,6 +354,9 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         setFruitStyle(displayFruit, currentDropType);
         nextDropType = localStorage.getItem("nextDropType") || "red";
         score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
+
+        randsGenerated = localStorage.getItem("randsGenerated") || 0;
+        restoreRandomToPoint();
     }
 
 
@@ -409,22 +400,33 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         let sameCount = 4;
         let modifier = Math.max(Math.round(6 - drops / 100), 3);
 
-        while (sameCount > 0) {
+        if (CURRENT_MODE === "cas") {
+            while (sameCount > 0) {
+                let random = Math.random();
+                nextDropType =
+                    Object.keys(TYPE_MAP)[
+                    Math.floor(
+                        (Math.pow(random, modifier) * Object.keys(TYPE_MAP).length) / 2
+                    )
+                    ];
+                if (nextDropType === currentDropType) {
+                    sameCount--;
+                } else {
+                    sameCount = 0;
+                }
+
+                if (nextDropType === Object.keys(TYPE_MAP)[0]) {
+                    sameCount = 0;
+                }
+            }
+        } else {
+            let random = seededRandom();
             nextDropType =
                 Object.keys(TYPE_MAP)[
                 Math.floor(
-                    (Math.pow(Math.random(), modifier) * Object.keys(TYPE_MAP).length) / 2
+                    (Math.pow(random, modifier) * Object.keys(TYPE_MAP).length) / 2
                 )
                 ];
-            if (nextDropType === currentDropType) {
-                sameCount--;
-            } else {
-                sameCount = 0;
-            }
-
-            if (nextDropType === Object.keys(TYPE_MAP)[0]) {
-                sameCount = 0;
-            }
         }
         localStorage.setItem("nextDropType", nextDropType);
         score.style.borderRight = `5px solid ${TYPE_MAP[nextDropType].fillStyle}`
@@ -505,11 +507,16 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     }
 
 
-    function gameOver(manual) {
+    window.gameOver = function gameOver(manual) {
         localStorage.removeItem("game");
         localStorage.removeItem("score");
 
+        randsGenerated = 0;
+        localStorage.setItem("randsGenerated", randsGenerated);
+        restoreRandomToPoint();
+
         alert("Game Over! Score: " + scoreCount);
+        console.log("----- game over");
         if (manual) {
             clearValues();
         } else {
@@ -519,8 +526,44 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     function clearValues() {
         updateScore(0);
         clearBalls();
+        localStorage.removeItem("game");
+        localStorage.removeItem("score");
         drops = 0;
+        currentDropType = "red";
+        nextDropType = "red";
+        setFruitStyle(displayFruit, currentDropType);
+
     }
+
+
+
+
+    let seed = 1;
+    let randsGenerated = 0;
+    function RNG(seed) {
+        var m = 2 ** 35 - 31
+        var a = 185852
+        var s = seed % m
+        return function () {
+            return (s = s * a % m) / m
+        }
+    }
+    let randFunction = RNG(seed);
+    function seededRandom() {
+        randsGenerated++;
+        let returnValue = randFunction();
+        console.log(returnValue);
+        return returnValue;
+    }
+
+    function restoreRandomToPoint() {
+        randFunction = RNG(seed);
+        for (let i = 0; i < randsGenerated; i++) {
+            console.log("restoring");
+            randFunction();
+        }
+    }
+
     Matter.Events.on(engine, "collisionStart", function (event) {
         var pairs = event.pairs;
         pairs.forEach((pair) => {
@@ -528,9 +571,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             const { bodyA, bodyB } = pair;
 
             if (bodyA.isSensor || bodyB.isSensor) return;
-
-            if (!bodyA.hitYet) console.log(bodyA);
-            if (!bodyB.hitYet) console.log(bodyB);
 
             if (bodyA.fruitType) bodyA.hitYet = true;
             if (bodyB.fruitType) bodyB.hitYet = true;
@@ -713,15 +753,15 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         localStorage.setItem("lastInteract", id);
 
         drops++;
-        console.log(drops);
         DROP_MIN_INTERVAL += 1;
         if (DROP_MIN_INTERVAL > 1000) DROP_MIN_INTERVAL = 1000;
-        console.log(displayFruit)
+
         addFruit(currentDropType, mouseX, DROP_HEIGHT);
         currentDropType = nextDropType;
         localStorage.setItem("currentDropType", currentDropType);
         setFruitStyle(displayFruit, currentDropType);
         setNextDropFruit();
+        localStorage.setItem("randsGenerated", randsGenerated);
 
         //Update DROP_HEIGHT so the "next up ball" moves too
         DROP_HEIGHT = -999;
@@ -731,7 +771,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             displayFruit.position.y = DROP_HEIGHT;
             constrainMouseX();
 
-        }, DROP_MIN_INTERVAL);
+        }, DROP_MIN_INTERVAL - 10);
 
         constrainMouseX();
 
@@ -782,7 +822,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 
     document.addEventListener("keydown", (e) => {
         if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
-            console.log("close ball")
             parent.postMessage("closeBall", "*");
         }
     });
@@ -796,12 +835,71 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     });
 
 
+    rankedToggle.checked = CURRENT_MODE === "ranked";
+    rankedToggle.oninput = (e) => {
+        if (CURRENT_MODE === "ranked") {
+            //Going to casual
+            let sure = confirm("Ball order in casual is completely random. \n\n Switching modes mid round will clear all balls, continue?");
+            if (sure) {
+                CURRENT_MODE = "cas";
+                localStorage.setItem("mode", "cas");
+                rankedToggle.innerText = "Casual";
+                rankedToggle.style.backgroundColor = "green";
+                rankedToggle.style.color = "white";
+                clearValues();
+            } else {
+                rankedToggle.checked = true;
+            }
+        } else {
+            //Going to ranked
+            let sure = confirm("Ball order in ranked is set. \n\n Switching modes mid round will clear all balls, continue?");
+            if (sure) {
+                CURRENT_MODE = "ranked";
+                localStorage.setItem("mode", "ranked");
+                rankedToggle.innerText = "Ranked";
+                rankedToggle.style.backgroundColor = "red";
+                rankedToggle.style.color = "white";
+
+                randsGenerated = 0;
+                localStorage.setItem("randsGenerated", randsGenerated);
+                restoreRandomToPoint();
+
+                clearValues();
+
+                setNextDropFruit();
+            } else {
+                rankedToggle.checked = false;
+            }
+        }
+    }
+
     //LEADERBOARD SHTUFF
     document.getElementById("leaderboardButton").onclick = () => { leaderboardPopup.style.display = "block"; }
-    document.getElementById("leaderboardPopup").onclick = () => { leaderboardPopup.style.display = "none"; }
+    document.getElementById("leaderboardPopup").onclick = (e) => {
+        if (e.target.id != "leaderboardPopup") return;
+        leaderboardPopup.style.display = "none";
+    }
 
     const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
 
+    let CASUAL_LEADERBOARD = [];
+    let RANKED_LEADERBOARD = [];
+
+    let leaderboardCasFocused = true;
+
+    leaderboardModeToggle.onclick = () => {
+        leaderboardCasFocused = !leaderboardCasFocused;
+        updateLeaderboardStrings();
+
+        //Render correct leaderboard
+        getLeaderboard();
+    }
+
+    function updateLeaderboardStrings() {
+        leaderboardModeToggle.innerText = leaderboardCasFocused ? "Ranked" : "Casual";
+        leaderboardHeader.innerText = leaderboardCasFocused ? "Casual Leaderboard" : "Ranked Leaderboard";
+        leaderboardSubtitle.innerText = leaderboardCasFocused ? "Balls drop in a random order in casual mode." : "Balls drop in a set order in ranked mode.";
+    }
 
     function dataURLtoBlob(dataURL) {
         let array, binary, i, len;
@@ -821,6 +919,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         let SCORE = scoreCount;
         let dataURL = canvas.toDataURL();
         clearValues();
+
+
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
 
         //use purgomalum to censor bad words
@@ -849,15 +949,24 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         let data = {
             name: name,
             score: SCORE,
-            canvasString: imageUrl
+            canvasString: imageUrl,
+            mode: CURRENT_MODE
         }
 
         let encryptedData = btoa(JSON.stringify(data));
         encryptedData = encryptedData.split("").reverse().join("");
         let newData = await fetch(`${LEADERBOARD_URL}?data=${encodeURIComponent(encryptedData)}`);
         let newJson = await newData.json();
+
+        leaderboardCasFocused = CURRENT_MODE === "cas";
+        updateLeaderboardStrings();
+
         renderLeaderboard(newJson);
         leaderboardPopup.style.display = "block";
+
+
+
+
 
         //Scroll to the leaderboard item that has a matching image 
         let leaderboard = document.getElementById("leaderboardEntries");
@@ -873,14 +982,25 @@ if (window.innerHeight < 500 && !(window === window.top)) {
                 break;
             }
         }
-
-        clearValues();
     }
     function getLeaderboard() {
+        if ((leaderboardCasFocused && CASUAL_LEADERBOARD.length > 0) || (!leaderboardCasFocused && RANKED_LEADERBOARD.length > 0)) {
+            renderLeaderboard(leaderboardCasFocused ? CASUAL_LEADERBOARD : RANKED_LEADERBOARD);
+            return;
+
+        };
+        let leaderboard = document.getElementById("leaderboardEntries");
+        leaderboard.innerHTML = "";
+
         //Fetch the leaderboard and display it in the popup
-        fetch(LEADERBOARD_URL)
+        fetch(LEADERBOARD_URL + `?mode=${leaderboardCasFocused ? "cas" : "ranked"}`)
             .then((response) => response.json())
             .then((data) => {
+                if (leaderboardCasFocused) {
+                    CASUAL_LEADERBOARD = data;
+                } else {
+                    RANKED_LEADERBOARD = data;
+                }
                 renderLeaderboard(data);
             });
     };
@@ -908,10 +1028,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             displayImage.style.objectFit = "cover";
             displayImage.onclick = (e) => {
                 openImage(entry[2]);
-                console.log(entry[2]);
-                setTimeout(() => {
-                    leaderboardPopup.style.display = "block";
-                }, 0);
             }
             imageContainer.appendChild(displayImage);
 
@@ -922,8 +1038,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         });
     }
     getLeaderboard();
-    setInterval(getLeaderboard, 60 * 1000);
-
 
     //Open a new window and write an image to it
     function openImage(url) {
@@ -942,6 +1056,12 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     ">
         
     </div>`);
+
+        //Clear leaderboards every minute
+        setInterval(() => {
+            CASUAL_LEADERBOARD = [];
+            RANKED_LEADERBOARD = [];
+        }, 60 * 1000);
     }
 })();
 if (location.href.includes("file") && location.href.includes("/index.")) alert("Use localindex");
