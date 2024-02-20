@@ -118,6 +118,8 @@
     top:5px;
     left:110px;
     z-index: 999999999;
+    background:white;
+    border-radius:5px;
 }
 *{
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
