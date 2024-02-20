@@ -852,7 +852,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             }
         } else {
             //Going to ranked
-            let sure = confirm("Ball order in ranked is set. \n\n Switching modes mid round will clear all balls, continue?");
+            let sure = confirm("Ball order in ranked is always the same. \n\n Switching modes mid round will clear all balls, continue?");
             if (sure) {
                 CURRENT_MODE = "ranked";
                 localStorage.setItem("mode", "ranked");
@@ -898,7 +898,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     function updateLeaderboardStrings() {
         leaderboardModeToggle.innerText = leaderboardCasFocused ? "Ranked" : "Casual";
         leaderboardHeader.innerText = leaderboardCasFocused ? "Casual Leaderboard" : "Ranked Leaderboard";
-        leaderboardSubtitle.innerText = leaderboardCasFocused ? "Balls drop in a random order in casual mode." : "Balls drop in a set order in ranked mode.";
+        leaderboardSubtitle.innerText = leaderboardCasFocused ? "Balls drop in a random order in casual mode." : "Balls always drop in the same order in ranked mode.";
     }
 
     function dataURLtoBlob(dataURL) {
