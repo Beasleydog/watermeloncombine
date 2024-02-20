@@ -117,6 +117,7 @@
     position: absolute;
     top:5px;
     left:110px;
+    z-index: 999999999;
 }
 *{
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
