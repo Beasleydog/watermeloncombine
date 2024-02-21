@@ -110,7 +110,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 
     let canvas, score, ctx;
 
-
     const DEFAULT_DROP_HEIGHT = 30;
     let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
     let DROP_MIN_INTERVAL = 500;
@@ -150,6 +149,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     }
 
     document.body.appendChild(canvas);
+    window.canvas = canvas;
+
     let mouseX = canvas.width / 2;
     let nextDropType = "red";
     let currentDropType = "red";
@@ -513,7 +514,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     }
 
 
-    window.gameOver = function gameOver(manual) {
+    function gameOver(manual) {
         localStorage.removeItem("game");
         localStorage.removeItem("score");
 
@@ -569,6 +570,25 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             console.log("restoring");
             randFunction();
         }
+    }
+
+    function resizeCanvas(x, y) {
+        const RESIZE_TIME = 100;
+        const FRAMES = 60;
+        let count = 0;
+        const xStep = (canvas.width - x) / FRAMES;
+        const yStep = (canvas.height - y) / FRAMES;
+        let int = setInterval(() => {
+            //Resize canvas
+            count++;
+            console.log(count);
+            canvas.width += xStep;
+            canvas.height += yStep;
+            render();
+            if (count == FRAMES) {
+                myClearInterval(int);
+            }
+        }, RESIZE_TIME / FRAMES);
     }
 
     Matter.Events.on(engine, "collisionStart", function (event) {
