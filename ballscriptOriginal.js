@@ -13,6 +13,11 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 (async () => {
     const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
 
+    const GLOBAL_COLLISION = {
+        group: 1,
+    }
+
+    let CAN_DIE = true;
     const setTimeout = window.setTimeout;
     const setInterval = window.setInterval;
     const myClearInterval = window.clearInterval;
@@ -190,8 +195,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     var Engine = Matter.Engine,
         Runner = Matter.Runner,
         Bodies = Matter.Bodies,
-        Composite = Matter.Composite;
-
+        Composite = Matter.Composite,
+        Body = Matter.Body;
 
     // create an engine
     var engine = Engine.create();
@@ -212,22 +217,32 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         canvas.height + 100,
         canvas.width,
         200,
-        { isStatic: true }
+        {
+            isStatic: true,
+            collisionFilter: GLOBAL_COLLISION
+        }
     );
+
     ground.friction = 0;
     var leftWall = Bodies.rectangle(
         -100,
         canvas.height / 2,
         200,
-        canvas.height * 3,
-        { isStatic: true }
+        canvas.height * 5,
+        {
+            isStatic: true,
+            collisionFilter: GLOBAL_COLLISION
+        }
     );
     var rightWall = Bodies.rectangle(
         canvas.width + 100,
         canvas.height / 2,
         200,
-        canvas.height * 3,
-        { isStatic: true }
+        canvas.height * 5,
+        {
+            isStatic: true,
+            collisionFilter: GLOBAL_COLLISION
+        }
     );
     Composite.add(engine.world, [ground, leftWall, rightWall]);
     leftWall.hitYet = true;
@@ -242,88 +257,116 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         RAINBOW_COLOR = `hsl(${(Date.now() / 5) % 360}, 100%, 50%)`;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        var bodies = Composite.allBodies(engine.world);
 
         window.requestAnimationFrame(render);
 
-        for (var i = 0; i < bodies.length; i += 1) {
-            ctx.save();
-            ctx.beginPath();
 
-            ctx.fillStyle = bodies[i].render.fillStyle;
-            if (bodies[i].render.fillStyle === "r") {
-                ctx.fillStyle = RAINBOW_COLOR;
-            }
-            const blurAmount = bodies[i].render.shadowBlur;
-            ctx.shadowBlur = blurAmount;
+        this.handleRender = (firstRendersOnly) => {
+            var bodies = Composite.allBodies(engine.world);
 
-            if (bodies[i].fruitType) {
-                const typeObject = TYPE_MAP[bodies[i].fruitType];
+            bodies = bodies.filter(x => {
+                return firstRendersOnly == x.renderFirst;
+            });
 
-                if (typeObject.effect === "pulse") {
-                    ctx.shadowBlur = blurAmount
-                        ? blurAmount *
-                        (Math.abs(((Date.now() / 50) % blurAmount) - blurAmount / 2) /
-                            blurAmount)
-                        : 0;
+            for (var i = 0; i < bodies.length; i += 1) {
+                //If body is below the screen, move it to the center of the screen
+                if (!bodies[i].isSensor && bodies[i].position.y > canvas.height + 100) {
+                    Body.setPosition(bodies[i], { x: canvas.width / 2, y: canvas.height / 2 });
+                    Body.setVelocity(bodies[i], { x: 0, y: 0 });
                 }
-                if (typeObject.effect === "dance") {
-                    //Make offset move in a circle
-                    const offset = 50;
-                    const x = Math.cos(Date.now() / 500) * offset;
-                    const y = Math.sin(Date.now() / 500) * offset;
-                    ctx.shadowOffsetX = x;
-                    ctx.shadowOffsetY = y;
+
+                ctx.save();
+                ctx.beginPath();
+
+                ctx.strokeStyle = bodies[i].render.strokeStyle;
+                ctx.lineWidth = bodies[i].render.strokeWidth || 2;
+
+                ctx.fillStyle = bodies[i].render.fillStyle;
+                if (bodies[i].render.fillStyle === "r") {
+                    ctx.fillStyle = RAINBOW_COLOR;
                 }
-                if (typeObject.effect === "explode") {
-                    if (Date.now() % 7 < 1) {
-                        //Spawn confetti
-                        confetti(bodies[i].position.x, bodies[i].position.y, bodies[i].fruitType);
+                const blurAmount = bodies[i].render.shadowBlur;
+                ctx.shadowBlur = blurAmount;
+
+                //If body has opacity, apply it
+                if (bodies[i].render.opacity) {
+                    ctx.globalAlpha = bodies[i].render.opacity;
+                }
+
+                if (bodies[i].fruitType) {
+                    const typeObject = TYPE_MAP[bodies[i].fruitType];
+
+                    if (typeObject.effect === "pulse") {
+                        ctx.shadowBlur = blurAmount
+                            ? blurAmount *
+                            (Math.abs(((Date.now() / 50) % blurAmount) - blurAmount / 2) /
+                                blurAmount)
+                            : 0;
+                    }
+                    if (typeObject.effect === "dance") {
+                        //Make offset move in a circle
+                        const offset = 50;
+                        const x = Math.cos(Date.now() / 500) * offset;
+                        const y = Math.sin(Date.now() / 500) * offset;
+                        ctx.shadowOffsetX = x;
+                        ctx.shadowOffsetY = y;
+                    }
+                    if (typeObject.effect === "explode") {
+                        if (Date.now() % 7 < 1) {
+                            //Spawn confetti
+                            confetti(bodies[i].position.x, bodies[i].position.y, bodies[i].fruitType);
+                        }
                     }
                 }
-            }
-            ctx.shadowColor =
-                bodies[i].render.shadowColor || ctx.fillStyle;
+                ctx.shadowColor =
+                    bodies[i].render.shadowColor || ctx.fillStyle;
 
-            if (bodies[i].text) {
-                ctx.font = "30px Arial";
-                ctx.fillStyle = "black";
-                ctx.fillText(
-                    bodies[i].text,
-                    bodies[i].position.x,
-                    bodies[i].position.y
-                );
-            } else if (bodies[i].circleRadius) {
-                ctx.arc(
-                    bodies[i].position.x,
-                    bodies[i].position.y,
-                    bodies[i].circleRadius,
-                    0,
-                    2 * Math.PI
-                );
-                ctx.fill();
-            } else {
-                var vertices = bodies[i].vertices;
+                if (bodies[i].text) {
+                    ctx.font = "30px Arial";
+                    ctx.fillStyle = "black";
+                    ctx.fillText(
+                        bodies[i].text,
+                        bodies[i].position.x,
+                        bodies[i].position.y
+                    );
+                } else if (bodies[i].circleRadius) {
+                    ctx.arc(
+                        bodies[i].position.x,
+                        bodies[i].position.y,
+                        bodies[i].circleRadius,
+                        0,
+                        2 * Math.PI
+                    );
+                    ctx.fill();
+                } else {
+                    var vertices = bodies[i].vertices;
 
-                ctx.moveTo(vertices[0].x, vertices[0].y);
+                    ctx.moveTo(vertices[0].x, vertices[0].y);
 
-                for (var j = 1; j < vertices.length; j += 1) {
-                    ctx.lineTo(vertices[j].x, vertices[j].y);
+                    for (var j = 1; j < vertices.length; j += 1) {
+                        ctx.lineTo(vertices[j].x, vertices[j].y);
+                    }
+
+                    ctx.lineTo(vertices[0].x, vertices[0].y);
+                    ctx.fill();
                 }
+                if (bodies[i].render.hasStroke) ctx.stroke();
+                ctx.closePath();
 
-                ctx.lineTo(vertices[0].x, vertices[0].y);
-                ctx.fill();
+
+                ctx.restore();
+
             }
-            ctx.closePath();
-
-
-            ctx.restore();
         }
 
+        this.handleRender(true);
+        this.handleRender();
 
         if (!document.hidden) {
             if (localStorage.getItem("lastInteract") !== id) return;
             //Create array of all fruit in simple object form with only necessary properties
+            var bodies = Composite.allBodies(engine.world);
+
             const stringBodys = bodies
                 .filter((body) => body.fruitType)
                 .map((body) => {
@@ -382,7 +425,14 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             //Make triangle
             body = Bodies.polygon(x, y, 3, TYPE_MAP[type].radius);
         }
+
+        //Give body angular spin
+        if (TYPE_MAP[type].spawnSpin) {
+            Body.setAngularVelocity(body, TYPE_MAP[type].spawnSpin);
+        }
+
         setFruitStyle(body, type);
+        body.collisionFilter = GLOBAL_COLLISION;
         body.fruitType = type;
         body.fruitTypeNumber = Object.keys(TYPE_MAP).indexOf(type);
         body.restitution = 0.7;
@@ -403,6 +453,108 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     function getAllFruit() {
         return engine.world.bodies.filter((x) => x.fruitType);
     }
+
+    function mergeAllFruitsEffect() {
+        var num = -1;
+
+        //Disable gravity
+        engine.world.gravity.y = 0;
+        CAN_DIE = false;
+
+        let cleanup = () => {
+            //Get all matterjs objects and set their collision filter to 1
+            engine.world.bodies.forEach((x) => {
+                x.collisionFilter = GLOBAL_COLLISION;
+            });
+
+            //Re-enable gravity
+            engine.world.gravity.y = 1;
+            CAN_DIE = true;
+        }
+        let merge = () => {
+            //Kill all velocities
+            engine.world.bodies.forEach((x) => {
+                x.velocity.x = 0;
+                x.velocity.y = 0;
+            });
+
+            let fruitOfNum = [];
+            while (fruitOfNum.length <= 1) {
+                num++;
+                fruitOfNum = getAllFruit().filter((x) => x.fruitTypeNumber == num);
+                //If num is more than the highest fruit type, end the loop
+                //Length is 12, stop at 11 so we dont merge the last one
+                if (num > 10) {
+                    cleanup();
+                    return;
+                }
+            }
+            // Loop through fruitOfNum
+            let mergesExpected = Math.floor(fruitOfNum.length / 2);
+            let mergesSoFar = 0;
+            for (var i = 0; i < fruitOfNum.length - 1; i += 2) {
+                var body1 = fruitOfNum[i];
+                var body2 = fruitOfNum[i + 1];
+
+                //Ensure that body2 is the lower one
+                if (body1.position.y > body2.position.y) {
+                    let temp = body1;
+                    body1 = body2;
+                    body2 = temp;
+                }
+
+                //Use collision filters to only make fruit of the same type merge
+                var collisionFilter = {
+                    group: Math.random() * 100000
+                };
+                body1.collisionFilter = collisionFilter;
+                body2.collisionFilter = collisionFilter;
+
+                var position1 = body1.position;
+                var position2 = body2.position;
+                let distance = Math.sqrt(Math.pow(position2.x - position1.x, 2) + Math.pow(position2.y - position1.y, 2));
+                var speed = .00005 * body1.mass * distance;
+
+                //Using trig, find the force to apply to body1 to make it move towards body2
+                let angle = Math.atan2(position2.y - position1.y, position2.x - position1.x);
+                let xComp = Math.cos(angle) * speed;
+                let yComp = Math.sin(angle) * speed;
+
+                var force = {
+                    x: xComp,
+                    y: yComp
+                }
+
+                Body.applyForce(body1, body1.position, force)
+
+                let backup = setTimeout(() => {
+                    //if the bodies havnt merged yet, just remove them
+                    if (!body1.merged) Composite.remove(engine.world, body1);
+                    if (!body2.merged) Composite.remove(engine.world, body2);
+
+                    mergesSoFar++;
+                    if (mergesSoFar == mergesExpected) {
+                        merge();
+                    }
+                }, 3000);
+
+                body1.onBeforeMerge = () => {
+                    mergesSoFar++;
+                    clearTimeout(backup);
+                    if (mergesSoFar == mergesExpected) {
+                        setTimeout(() => {
+                            merge();
+                        }, 1000);
+                    }
+                }
+
+
+            }
+        }
+
+        setTimeout(merge, 5000);
+    }
+
     function setNextDropFruit() {
         let sameCount = 4;
         let modifier = Math.max(Math.round(6 - drops / 100), 3);
@@ -444,7 +596,9 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             ...body.render,
             ...TYPE_MAP[type],
         };
-        body.circleRadius = TYPE_MAP[type].radius;
+        if (TYPE_MAP[type].type == "c") {
+            body.circleRadius = TYPE_MAP[type].radius;
+        }
     }
 
     function updateScore(newScore) {
@@ -465,7 +619,48 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             Composite.remove(engine.world, textBody);
         }, 2000);
     }
+    function expandingCircle(x, y, color) {
+        if (SPAM) return;
 
+        //Create a circle objcet of color that expands and fades.
+        const circle = Bodies.circle(x, y, 5, {
+            isSensor: true,
+            isStatic: true,
+            ignoreGravity: true,
+            renderFirst: true,
+            render: {
+                fillStyle: color,
+            },
+        });
+        const innerCircle = Bodies.circle(x, y, 5, {
+            isSensor: true,
+            isStatic: true,
+            ignoreGravity: true,
+            renderFirst: true,
+            render: {
+                fillStyle: "white",
+            },
+        });
+
+        Composite.add(engine.world, [circle, innerCircle]);
+
+        let initialVelocity = 1;
+        let growVelocity = initialVelocity;
+        let growAcceleration = -0.002;
+
+        let interval = setInterval(() => {
+            if (growVelocity < 0) {
+                myClearInterval(interval);
+                Composite.remove(engine.world, [circle, innerCircle]);
+            }
+            circle.circleRadius += growVelocity;
+            growVelocity += growAcceleration;
+
+            innerCircle.circleRadius = circle.circleRadius - 5;
+
+            circle.render.opacity = growVelocity / initialVelocity + .0001;
+        }, 1);
+    }
     function confetti(x, y, type) {
         if (SPAM) return;
         const color = TYPE_MAP[type].fillStyle;
@@ -491,7 +686,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             Composite.add(engine.world, [confetti]);
             setTimeout(() => {
                 Composite.remove(engine.world, confetti);
-            }, 2000);
+            }, 2000 + Math.random() * 1000);
         }
     }
     function clearBalls() {
@@ -523,7 +718,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         restoreRandomToPoint();
 
         alert("Game Over! Score: " + scoreCount);
-        console.log("----- game over");
         if (manual) {
             clearValues();
         } else {
@@ -539,6 +733,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         drops = 0;
         currentDropType = "red";
         nextDropType = "red";
+        localStorage.setItem("currentDropType", currentDropType);
+        localStorage.setItem("nextDropType", nextDropType);
         setFruitStyle(displayFruit, currentDropType);
 
     }
@@ -560,14 +756,12 @@ if (window.innerHeight < 500 && !(window === window.top)) {
     function seededRandom() {
         randsGenerated++;
         let returnValue = randFunction();
-        console.log(returnValue);
         return returnValue;
     }
 
     function restoreRandomToPoint() {
         randFunction = RNG(seed);
         for (let i = 0; i < randsGenerated; i++) {
-            console.log("restoring");
             randFunction();
         }
     }
@@ -581,7 +775,6 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         let int = setInterval(() => {
             //Resize canvas
             count++;
-            console.log(count);
             canvas.width += xStep;
             canvas.height += yStep;
             render();
@@ -613,6 +806,9 @@ if (window.innerHeight < 500 && !(window === window.top)) {
                 bodyA.merged = true;
                 bodyB.merged = true;
 
+                if (bodyA.onBeforeMerge) bodyA.onBeforeMerge();
+                if (bodyB.onBeforeMerge) bodyB.onBeforeMerge();
+
                 popSound.cloneNode(true).play();
 
 
@@ -631,6 +827,11 @@ if (window.innerHeight < 500 && !(window === window.top)) {
                     setTimeout(() => {
                         myClearInterval(cel);
                     }, 5000);
+                }
+
+                if (newType == "t") {
+                    expandingCircle(averageX, averageY, "black");
+                    mergeAllFruitsEffect();
                 }
 
                 addFruit(newType, averageX, averageY);
@@ -664,6 +865,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
             render: {
                 fillStyle: "rgb(0, 0, 0)",
             },
+            collisionFilter: GLOBAL_COLLISION
         }
     );
     topSensor.death = true;
@@ -739,9 +941,13 @@ if (window.innerHeight < 500 && !(window === window.top)) {
                 type: "c"
             },
             t: {
-                fillStyle: "t",
-                radius: 50,
+                fillStyle: "white",
+                strokeStyle: "#cccccc",
+                hasStroke: true,
+                strokeWidth: 5,
+                radius: 80,
                 type: "t",
+                spawnSpin: .1
             }
         };
     }
@@ -767,6 +973,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
         constrainMouseX();
     };
     document.onclick = (e) => {
+        if (!CAN_DIE) return;
         if (!e.isTrusted) {
             alert("Cheating! Bye bye balls");
             clearValues();
@@ -809,6 +1016,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 
     let lastTooHigh = -1;
     setInterval(() => {
+        if (!CAN_DIE) return;
         //Loop through all bodies and check if any have a y value higher than topSensor
         let tooHighs = engine.world.bodies.filter((body) => {
             if (!body.hitYet) return false;
@@ -825,7 +1033,7 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 
                     topSensor.render.fillStyle = `rgb(${(current / max) * 255},0,0)`;
 
-                    if (current > max) {
+                    if (current > max && CAN_DIE) {
                         gameOver();
 
                         return;
@@ -1096,6 +1304,8 @@ if (window.innerHeight < 500 && !(window === window.top)) {
 
     function logFruitAdded() {
         //This is a click. Update the clicks stored in local storage. If we have reached ten clicks, send a request to the server to log the clicks. Include 10 as the batchAmount
+
+        if (location.href.includes("file")) return;
 
         let clicks = Number(localStorage.getItem("clicks") || 0);
         clicks++;
