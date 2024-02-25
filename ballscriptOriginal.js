@@ -8,6 +8,8 @@ if (window.location.hash.includes("noembed")) {
     document.getElementById("warn").remove();
 }
 
+const popSound = new Audio("pop.mp3");
+
 const canvas = document.getElementById("gameCanvas");
 window.onresize = () => {
     Object.assign(canvas.style, {
@@ -46,6 +48,7 @@ const options = {
         updateNextDropIndicator();
     },
     onMerge: (data) => {
+        popSound.cloneNode().play();
         writeToStorage();
     },
     onScoreChange: (scoreValue) => {
