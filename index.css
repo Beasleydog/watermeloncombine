@@ -120,6 +120,44 @@
     z-index: 999999999;
     background:white;
     border-radius:5px;
+    user-select: none;
+}
+
+#gameCanvas {
+    position: fixed;
+    bottom: 0;
+    left: 50vw;
+    transform: translateX(-50%);
+    z-index: 100;
+    backdrop-filter: blur(1px);
+    background: rgb(255 255 255 / 10%);
+    border: 1px solid black;
+    border-top: none;
+    width: calc(100vw * 777 / 1366);
+    height: calc(100vh * 777 / 1366);
+}
+#warn{
+    z-index: 99999;
+    position: fixed;
+    left: 50%;
+    top: 30%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    user-select: none;
+}
+#score{
+    position: fixed;
+    top: 5px;
+    left: 0px;
+    z-index: 999999;
+    user-select: none;
+    font-size: 40px;
+    font-weight: bold;
+    background: white;
+    padding-left: 5px;
+    border-radius: 3px;
+    padding-right: 5px;
+    cursor: pointer;
 }
 *{
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

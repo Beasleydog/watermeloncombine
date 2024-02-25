@@ -2,9 +2,12 @@
 
 <head>
   <link rel="stylesheet" href="index.css">
+  <script src="./GameAPI.js"></script>
 </head>
 
 <body style="display:none;">
+  <canvas id="gameCanvas" width="1366" height="777"></canvas>
+  <div id="score" class="nodrop">0</div>
   <div id="rankedToggleContainer" class="nodrop">
     <label for="rankedToggle" class="nodrop">Ranked</label>
     <input id="rankedToggle" type="checkbox" class="nodrop">
@@ -22,6 +25,7 @@
       </div>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js">  </script>
   <script src="./ballscript.js"></script>
 </body>
 
