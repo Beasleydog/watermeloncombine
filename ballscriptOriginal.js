@@ -12,7 +12,7 @@ if (window.innerHeight > 500 || (window === window.top)) {
 }
 //If hash includes "noembed" then remove warnText
 if (window.location.hash.includes("noembed")) {
-    //document.getElementById("warn").remove();
+    document.getElementById("warn").remove();
 }
 
 const popSound = new Audio("pop.mp3");
