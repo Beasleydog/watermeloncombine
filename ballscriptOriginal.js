@@ -1,3 +1,10 @@
+document.addEventListener("keydown", (e) => {
+        if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
+            console.log("close ball")
+            parent.postMessage("closeBall", "*");
+        }
+    });
+
 //Don't work on small screens. 
 //This MIGHT be to try to hide windows that accidentally got embedded in Schoology posts 😳🤫
 if (window.innerHeight > 500 || (window === window.top)) {
