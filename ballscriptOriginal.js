@@ -1,11 +1,11 @@
 //Don't work on small screens. 
 //This MIGHT be to try to hide windows that accidentally got embedded in Schoology posts 😳🤫
-if (window.innerHeight > 500 && (window === window.top)) {
+if (window.innerHeight > 500 || (window === window.top)) {
     document.body.style.display = "unset";
 }
 //If hash includes "noembed" then remove warnText
 if (window.location.hash.includes("noembed")) {
-    document.getElementById("warn").remove();
+    //document.getElementById("warn").remove();
 }
 
 const popSound = new Audio("pop.mp3");
