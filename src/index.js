@@ -43,7 +43,6 @@ import('@dimforge/rapier2d').then(RAPIER => {
     }
     function writeToStorage() {
         const state = game.getFullState();
-        console.log(state.minimizeDuplicates)
         localStorage.setItem("state", JSON.stringify(state));
     }
 
