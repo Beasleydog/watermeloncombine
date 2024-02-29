@@ -950,6 +950,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             });
 
             addedFruit.rigidBody.setRotation(fruit.angle);
+            addedFruit.isSad = fruit.sad;
         });
 
         randFunction = RNG(RNG_SEED);
@@ -967,7 +968,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     position: position,
                     velocity: velocity,
                     fruitType: body.fruitType,
-                    angle: angle
+                    angle: angle,
+                    sad: body.isSad
                 });
             });
         return {
