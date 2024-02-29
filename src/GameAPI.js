@@ -1,4 +1,6 @@
-function CombineGame(canvas, extraOptions) {
+function CombineGame(RAPIER, canvas, extraOptions) {
+    if (!RAPIER) throw "gimme rapier yo";
+
     //Prevent hacking of global stuff
     const setTimeout = window.setTimeout;
     const setInterval = window.setInterval;
@@ -9,54 +11,54 @@ function CombineGame(canvas, extraOptions) {
         red: {
             fillStyle: "red",
             radius: 12,
-            type: "c"
+            type: "circle"
         },
         blue: {
             fillStyle: "blue",
             radius: 45,
-            type: "c"
+            type: "circle"
         },
         aqua: {
             fillStyle: "#00FFFF",
             radius: 75,
-            type: "c"
+            type: "circle"
         },
         green: {
             fillStyle: "green",
             radius: 100,
-            type: "c"
+            type: "circle"
         },
         yellow: {
             fillStyle: "yellow",
             radius: 130,
-            type: "c"
+            type: "circle"
         },
         purple: {
             fillStyle: "purple",
             radius: 155,
-            type: "c"
+            type: "circle"
         },
         orange: {
             fillStyle: "orange",
             radius: 185,
-            type: "c"
+            type: "circle"
         },
         pink: {
             fillStyle: "pink",
             radius: 200,
-            type: "c"
+            type: "circle"
         },
         brown: {
             fillStyle: "brown",
             radius: 215,
-            type: "c"
+            type: "circle"
         },
         black: {
             fillStyle: "black",
             radius: 260,
             shadowBlur: 80,
             effect: "pulse",
-            type: "c",
+            type: "circle",
             hasStroke: true
         },
         r: {
@@ -64,7 +66,7 @@ function CombineGame(canvas, extraOptions) {
             radius: 50,
             shadowBlur: 200,
             effect: "dance",
-            type: "c"
+            type: "circle"
         },
         t: {
             fillStyle: "white",
@@ -72,10 +74,11 @@ function CombineGame(canvas, extraOptions) {
             hasStroke: true,
             lineWidth: 5,
             radius: 80,
-            type: "t",
+            type: "triangle",
             spawnSpin: .1
         }
     };
+
     const GLOBAL_COLLISION = {
         group: 1,
     }
@@ -98,8 +101,13 @@ function CombineGame(canvas, extraOptions) {
     let BODIES = [];
     let FRUITS = [];
     let LAST_TIME_TOO_HIGH = -1;
-    const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
-
+    let RAPIER_MULTIPLIER = 100;
+    const BALL_RESTITUTION = .2;
+    const MAX_FRUIT_VELOCITY = 5;
+    const NEW_DAMPENING_TIME = 10;
+    const DAMP_AMOUNT = 50;
+    const VERTICAL_EXPLODE_DAMP_MULTIPLIER = 1.2;
+    let SCHEDULED_EVENTS = [];
     this.loadExtraOptions = (options) => {
         extraOptions = options;
     }
@@ -123,34 +131,29 @@ function CombineGame(canvas, extraOptions) {
         resetRandom();
     }
     this.setMinimalDuplicates = (bool) => {
-        console.log("setting to ", bool)
         MINIMIZE_DUPLICATES = bool;
     }
     function resetRandom() {
         randFunction = RNG(RNG_SEED);
         RANDOMS_GENERATED = 0;
     }
-    const Engine = Matter.Engine,
-        Runner = Matter.Runner,
-        Bodies = Matter.Bodies,
-        Composite = Matter.Composite,
-        Body = Matter.Body;
 
     //Create engine
-    const engine = Engine.create();
-    engine.positionIterations = 10;
-    engine.velocityIterations = 20;
-    engine.timing.fixed = true;
-    Matter.Common._seed = 12345678;
-    //Create runner for engine. This runner will be updated in the tick function later
-    const runner = Runner.create();
-    // Runner.run(runner, engine);
+    const gravity = { x: 0, y: 9.81 };
+    const eventQueue = new RAPIER.EventQueue(true);
+    const world = new RAPIER.World(gravity);
 
     //Rendering stuff
     const ctx = canvas?.getContext("2d");
 
     const renderFunction = () => {
         ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+        //Draw sensor bar
+        ctx.save();
+        ctx.fillStyle = topSensor.fill;
+        ctx.fillRect(0, topSensor.y, SCREEN_WIDTH, 10);
+        ctx.restore();
 
         const firstBodies = BODIES.filter(body => body.renderFirst);
         const laterBodies = BODIES.filter(body => !body.renderFirst);
@@ -193,37 +196,81 @@ function CombineGame(canvas, extraOptions) {
     }
     const drawBodiesToCanvas = (bodies) => {
         bodies.forEach(body => {
+            const position = {};
+            if (body.position) {
+                position.x = body.position.x;
+                position.y = body.position.y;
+            } else {
+                position.x = body.rigidBody.translation().x * RAPIER_MULTIPLIER;
+                position.y = body.rigidBody.translation().y * RAPIER_MULTIPLIER;
+            }
+
             ctx.save();
             ctx.beginPath();
 
             applyBodyStylesToCanvas(body);
+            // if (body.impactedByNew) {
+            //     ctx.fillStyle = "black";
+            // }
+            // if (body.velocityCapped) {
+            //     ctx.fillStyle = "pink";
+            // }
 
-            switch (body.specialRenderType) {
+            switch (body.type) {
                 case "text":
                     ctx.font = "30px Arial";
                     ctx.fillText(
                         body.text,
-                        body.position.x,
-                        body.position.y
+                        position.x,
+                        position.y
                     );
                     break;
                 case "circle":
+                    const radius = body.circleRadius || body.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
                     ctx.arc(
-                        body.position.x,
-                        body.position.y,
-                        body.circleRadius,
+                        position.x,
+                        position.y,
+                        radius,
                         0,
                         2 * Math.PI
                     );
                     ctx.fill();
+
+                    if (!body.noFace) {
+                        //Draw face 😃😃
+                        ctx.globalAlpha *= .5;
+                        //Apply filter to darken
+                        ctx.filter = "brightness(0.5)";
+
+                        //Center canvas at position
+                        ctx.translate(position.x, position.y);
+                        //Rotate to the angle of the body
+                        if (body.rigidBody) {
+                            ctx.rotate(body.rigidBody.rotation());
+                        }
+
+                        ctx.beginPath();
+                        if (body.isSad) {
+                            ctx.arc(0, radius * .25, radius * .2, 1 * Math.PI, 0);
+                        } else {
+                            ctx.arc(0, radius * .05, radius * .2, 0, 1 * Math.PI);
+
+                        }
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.arc(radius * .08, -radius * .05, radius * .05, 0, 2 * Math.PI);
+                        ctx.fill();
+
+                        ctx.beginPath();
+                        ctx.arc(-radius * .08, -radius * .05, radius * .05, 0, 2 * Math.PI);
+                        ctx.fill();
+                    }
+                    break;
+                case "triangle":
+                    //TODO: Implement traingel
                     break;
                 default:
-                    ctx.moveTo(body.vertices[0].x, body.vertices[0].y);
-                    for (let j = 1; j < body.vertices.length; j++) {
-                        ctx.lineTo(body.vertices[j].x, body.vertices[j].y);
-                    }
-                    ctx.lineTo(body.vertices[0].x, body.vertices[0].y);
-                    ctx.fill();
                     break;
             }
             ctx.closePath();
@@ -237,39 +284,98 @@ function CombineGame(canvas, extraOptions) {
 
 
     this.tick = () => {
-        //Update engine 
-        Engine.update(engine, 1000 / 60);
-
-        BODIES = Composite.allBodies(engine.world);
+        SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
+            event.ticks--;
+            if (event.ticks <= 0) {
+                event.callback();
+                return false;
+            }
+            return true;
+        });
         FRUITS = BODIES.filter(body => body.fruitType);
         FRUITS.forEach(body => {
             //Ensure balls don't go offscreen
-            if (body.position.y > SCREEN_HEIGHT + 100) {
-                Body.setPosition(body, {
-                    x: SCREEN_WIDTH / 2,
-                    y: SCREEN_HEIGHT / 2
-                });
-                Body.setVelocity(body, { x: 0, y: 0 });
+            const yPosition = body.rigidBody.translation().y;
+            if (yPosition > SCREEN_HEIGHT + 100) {
+                //Teleport body to center of screen
+                body.rigidBody.setTranslation({ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 });
+                body.rigidBody.setLinvel({ x: 0, y: 0 }, true);
+            }
+
+            if (body.hitYet) {
+                //Cap velocity
+                const velocity = body.rigidBody.linvel();
+                const speed = Math.sqrt(Math.pow(velocity.x, 2) + Math.pow(velocity.y, 2));
+                let checkAmount = MAX_FRUIT_VELOCITY;
+                const radius = body.colliderDesc.shape.radius;
+
+                //If the body is touching the sensor, cap it at a lower speed
+                if (Math.abs(yPosition - topSensor.y) < radius || yPosition > topSensor.y) {
+                    checkAmount *= VERTICAL_EXPLODE_DAMP_MULTIPLIER;
+                }
+
+                if (speed > checkAmount) {
+                    body.velocityCapped = true;
+                    let angle = Math.atan2(velocity.y, velocity.x);
+                    body.rigidBody.setLinvel({ x: Math.cos(angle) * checkAmount, y: Math.sin(angle) * checkAmount }, true);
+                } else {
+                    body.velocityCapped = false;
+                }
+            }
+            if (body.impactedByNew) {
+                //Damp body
+                body.rigidBody.setAngularDamping(DAMP_AMOUNT);
+                body.rigidBody.setLinearDamping(DAMP_AMOUNT);
+
+                //If body is moving up, dampen it more
+                const velocity = body.rigidBody.linvel();
+                if (velocity.y < 0) {
+                    body.rigidBody.setLinearDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
+                }
+            } else {
+                body.rigidBody.setAngularDamping(0);
+                body.rigidBody.setLinearDamping(0);
             }
         });
 
+        //Update engine 
+        world.step(eventQueue);
+        eventQueue.drainCollisionEvents((handle1, handle2, started) => {
+            //Get body from handle
+
+
+            let bodyA, bodyB;
+            BODIES.filter((body) => {
+                if (body.rigidBody) {
+                    if (body.rigidBody.handle == handle1) {
+                        bodyA = body;
+                    } else if (body.rigidBody.handle == handle2) {
+                        bodyB = body;
+                    }
+                }
+            })
+            handleCollision(bodyA, bodyB, started);
+        });
 
         if (CAN_DIE) {
             //Loop through all bodies and check if any have a y value higher than topSensor
             let tooHighs = FRUITS.filter((body) => {
                 if (!body.hitYet) return false;
-
+                const yVelocity = body.rigidBody.linvel().y;
+                const xVelocity = body.rigidBody.linvel().x;
+                const radius = body.colliderDesc.shape.radius;
+                const position = body.rigidBody.translation();
                 //If the body has enough velocity, ignore it
-                if (Math.sqrt(Math.pow(body.velocity.y, 2) + Math.pow(body.velocity.x), 2) > 3) return false;
-                if (Math.abs(body.velocity.y) + Math.abs(body.velocity.x) > 3) return false;
+                if (Math.sqrt(Math.pow(yVelocity, 2) + Math.pow(xVelocity), 2) > 3) return false;
+                if (Math.abs(yVelocity) + Math.abs(xVelocity) > 3) return false;
 
-                let tooHigh = body.position.y + body.circleRadius < topSensor.position.y;
+                let tooHigh = (position.y + radius) * RAPIER_MULTIPLIER < topSensor.y;
                 if (tooHigh) {
                     if (LAST_TIME_TOO_HIGH != -1) {
                         let max = 3000;
                         let current = Date.now() - LAST_TIME_TOO_HIGH;
 
-                        if (canvas) topSensor.render.fillStyle = `rgb(${(current / max) * 255},0,0)`;
+                        if (canvas) topSensor.fill = `rgb(${(current / max) * 255},0,0)`;
 
                         if (current > max && CAN_DIE) {
                             gameOver();
@@ -284,33 +390,41 @@ function CombineGame(canvas, extraOptions) {
             });
             if (tooHighs.length == 0) {
                 LAST_TIME_TOO_HIGH = -1;
-                topSensor.render.fillStyle = "rgb(0,0,0)";
+                topSensor.fill = "rgb(0,0,0)";
             }
         }
     }
 
     this.loop = () => {
         this.tick();
+
         if (canvas) renderFunction();
         setTimeout(this.loop, 1000 / 60);
         // requestAnimationFrame(this.loop);
     }
+    function setGravityOn(bool) {
+        if (bool) {
+            world.setGravity({ x: 0, y: 9.81 });
+        } else {
+            world.setGravity({ x: 0, y: 0 });
+        }
+    }
     function clearBallsAnimation(callback) {
-        engine.world.gravity.y = 0;
+        //Disable gravity 
+        setGravityOn(false);
         LAST_TIME_TOO_HIGH = Number.MAX_VALUE;
         CAN_DIE = false;
         let ci = setInterval(() => {
             if (FRUITS.length == 0) {
-                engine.world.gravity.y = 1;
+                setGravityOn(true);
                 LAST_TIME_TOO_HIGH = -1;
                 CAN_DIE = true;
                 clearInterval(ci);
                 if (callback) callback();
             } else {
-                Composite.remove(
-                    engine.world,
-                    FRUITS[Math.floor(Math.random() * FRUITS.length)]
-                );
+                let randomIndex = Math.floor(Math.random() * FRUITS.length);
+                let randomBody = FRUITS[randomIndex];
+                removeBody(randomBody);
             }
         }, 15);
     }
@@ -326,14 +440,13 @@ function CombineGame(canvas, extraOptions) {
         resetRandom();
         //Remove all bodies
         FRUITS.forEach((fruit) => {
-            Composite.remove(engine.world, fruit);
+            removeBody(fruit);
         });
+
         FRUITS = [];
-        BODIES = Composite.allBodies(engine.world);
 
         updateCurrentAndNextType();
         if (canvas) setFruitStyle(displayFruit, CURRENT_TYPE);
-
     }
     this.resetToDefaultValues = resetToDefaultValues;
     function gameOver() {
@@ -386,10 +499,12 @@ function CombineGame(canvas, extraOptions) {
         constrainMouseX();
     }
     function mergeAllFruitsEffect() {
+        //TODO: FIX THIS
+        //Turn all into sensors with specific id. Then in merge logic check by id?
+        //https://rapier.rs/docs/user_guides/javascript/collider_collision_groups/
         var num = -1;
 
-        //Disable gravity
-        engine.world.gravity.y = 0;
+        setGravityOn(false);
         CAN_DIE = false;
 
         let cleanup = () => {
@@ -485,6 +600,51 @@ function CombineGame(canvas, extraOptions) {
 
         setTimeout(merge, 5000);
     }
+    function addCircle(x, y, radius) {
+        let ballColliderDesc = RAPIER.ColliderDesc.ball(radius / RAPIER_MULTIPLIER).setRestitution(BALL_RESTITUTION);
+        let ballBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER).setCcdEnabled(true);
+        let ballRigidBody = world.createRigidBody(ballBodyDesc);
+
+        ballColliderDesc.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
+        ballColliderDesc.setFriction(.1);
+        ballColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
+
+        ballColliderDesc.setMass(radius)
+
+        world.createCollider(ballColliderDesc, ballRigidBody);
+        let addition = {
+            id: Math.random(),
+            type: "circle",
+            renderType: "circle",
+            rigidBody: ballRigidBody,
+            colliderDesc: ballColliderDesc
+        }
+        BODIES.push(addition);
+        return addition
+    }
+
+    function addWall(x, y, width, height) {
+        let wallColliderDesc = RAPIER.ColliderDesc.cuboid(width / RAPIER_MULTIPLIER, height / RAPIER_MULTIPLIER);
+        let wallBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
+        let wallRigidBody = world.createRigidBody(wallBodyDesc);
+        wallColliderDesc.setFriction(1);
+        world.createCollider(wallColliderDesc, wallRigidBody);
+        let addition = ({
+            type: "rectangle",
+            rigidBody: wallRigidBody,
+            colliderDesc: wallColliderDesc,
+            render: {
+                fillStyle: "black"
+            }
+        });
+        BODIES.push(addition);
+        return addition;
+    }
+    function removeBody(body) {
+        world.removeRigidBody(body.rigidBody);
+        BODIES = BODIES.filter((b) => b.id != body.id);
+        FRUITS = FRUITS.filter((b) => b.id != body.id);
+    }
     function confetti(x, y, type) {
         //Spawn confetti at points x,y. Match the style of the type
         if (!canvas) return;
@@ -494,70 +654,57 @@ function CombineGame(canvas, extraOptions) {
         for (let i = 0; i < 15; i++) {
             const angle = Math.random() * Math.PI * 2;
             const speed = Math.random() * 0.002;
-            const confetti = Bodies.circle(
-                x + Math.cos(angle) * r,
-                y + Math.sin(angle) * r,
-                5,
-                {
-                    render: {
-                        fillStyle: color,
-                    },
-                    isSensor: true,
-                    force: { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }
-                }
-            );
-            Composite.add(engine.world, [confetti]);
+            const confetti = addCircle(x + Math.cos(angle) * r, y + Math.sin(angle) * r, 5);
+
+            //Make the confetti rigibdoy KinematicVelocityBased
+
+
+            confetti.render = {
+                fillStyle: color,
+                shadowBlur: 20,
+                effect: "pulse",
+                opacity: 1
+            }
+
+            confetti.noFace = true;
+            confetti.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
 
             setTimeout(() => {
-                Composite.remove(engine.world, confetti);
+                removeBody(confetti);
             }, 2000 + Math.random() * 1000);
         }
     }
-    function textPopup(x, y, text) {
+    function textPopup(x, y, textValue) {
         if (!canvas) return;
 
-        const textBody = Bodies.rectangle(x, y, 100, 100, {
-            isSensor: true,
-            specialRenderType: "text",
-            render: {
-                fillStyle: "black"
-            }
-        });
-        textBody.force.y = -0.3;
-        //Make the body ignore gravity
-        textBody.ignoreGravity = true;
-        textBody.text = text;
-        Composite.add(engine.world, [textBody]);
+        const text = {
+            id: Math.random(),
+            type: "text",
+            text: textValue,
+            position: { x: x, y: y },
+        }
         setTimeout(() => {
-            Composite.remove(engine.world, textBody);
+            BODIES = BODIES.filter((b) => b.id != text.id);
         }, 2000);
     }
     function expandingCircle(x, y, color) {
         if (!canvas) return;
 
         //Create a circle objcet of color that expands and fades.
-        const circle = Bodies.circle(x, y, 5, {
-            isSensor: true,
-            isStatic: true,
-            ignoreGravity: true,
+        const circle = {
+            id: Math.random(),
+            type: "circle",
+            position: { x: x, y: y },
+            circleRadius: 5,
             renderFirst: true,
-            specialRenderType: "circle",
             render: {
-                fillStyle: color,
-            },
-        });
-        const innerCircle = Bodies.circle(x, y, 5, {
-            isSensor: true,
-            isStatic: true,
-            ignoreGravity: true,
-            renderFirst: true,
-            specialRenderType: "circle",
-            render: {
-                fillStyle: "white",
-            },
-        });
+                strokeStyle: color,
+                lineWidth: 4,
+                opactiy: 1
+            }
+        }
 
-        Composite.add(engine.world, [circle, innerCircle]);
+        BODIES.push(circle);
 
         let initialVelocity = 1;
         let growVelocity = initialVelocity;
@@ -566,133 +713,168 @@ function CombineGame(canvas, extraOptions) {
         let interval = setInterval(() => {
             if (growVelocity < 0) {
                 clearInterval(interval);
-                Composite.remove(engine.world, [circle, innerCircle]);
+                BODIES = BODIES.filter((b) => b.id != circle.id);
             }
             circle.circleRadius += growVelocity;
             growVelocity += growAcceleration;
-
-            innerCircle.circleRadius = circle.circleRadius - 5;
-
             circle.render.opacity = growVelocity / initialVelocity + .0001;
         }, 1);
     }
 
-    function handleCollision(event) {
-        var pairs = event.pairs;
-        pairs.forEach((pair) => {
-            const { bodyA, bodyB } = pair;
+    function handleCollision(bodyA, bodyB, started) {
+        //If we have a fruit, mark it as hit
+        if (bodyA.fruitType && bodyB.fruitType) {
+            bodyA.hitYet = true;
+            bodyB.hitYet = true;
+        }
 
-            //Ignore any sensor collisions
-            if (bodyA.isSensor || bodyB.isSensor) return;
+        if (bodyA.impactedByNew || bodyB.impactedByNew) {
+            bodyA.impactedByNew = true;
+            bodyB.impactedByNew = true;
+            scheduledEvent(NEW_DAMPENING_TIME, () => {
+                bodyA.impactedByNew = false;
+                bodyB.impactedByNew = false;
+            });
+        }
 
-            //If we have a fruit, mark it as hit
-            if (bodyA.fruitType) bodyA.hitYet = true;
-            if (bodyB.fruitType) bodyB.hitYet = true;
+        //If this isn't a new collision, ignore it
+        if (!started) return;
 
-            if (
-                bodyA.fruitType &&
-                bodyB.fruitType &&
-                bodyA.fruitType === bodyB.fruitType
-            ) {
-                //Handle fruit upgrades
+        if (
+            bodyA.fruitType &&
+            bodyB.fruitType &&
+            bodyA.fruitType === bodyB.fruitType
+        ) {
+            //Handle fruit upgrades
 
-                //Prevent duplication glitches
-                if (bodyA.merged || bodyB.merged) return;
-                bodyA.merged = true;
-                bodyB.merged = true;
+            //Prevent duplication glitches
+            if (bodyA.merged || bodyB.merged) return;
+            bodyA.merged = true;
+            bodyB.merged = true;
 
-                //If body has a beforeMerge listner, ring its line 📞📞
-                if (bodyA.onMerge) bodyA.onMerge();
-                if (bodyB.onMerge) bodyB.onMerge();
+            //If body has a beforeMerge listner, ring its line 📞📞
+            if (bodyA.onMerge) bodyA.onMerge();
+            if (bodyB.onMerge) bodyB.onMerge();
 
-                const averageX = (bodyA.position.x + bodyB.position.x) / 2;
-                const averageY = (bodyA.position.y + bodyB.position.y) / 2;
+            const aPosition = bodyA.rigidBody.translation();
+            const bPosition = bodyB.rigidBody.translation();
 
-                const newType = nextType(bodyA.fruitType);
+            const averageX = (aPosition.x + bPosition.x) / 2 * RAPIER_MULTIPLIER;
+            const averageY = (aPosition.y + bPosition.y) / 2 * RAPIER_MULTIPLIER;
 
-                if (canvas) {
-                    //Some types have visual celebrations
-                    if (newType == "r") {
-                        //Spawn confetti at random points throughout screen
-                        let cel = setInterval(() => {
-                            let rx = Math.random() * window.innerWidth;
-                            let ry = Math.random() * window.innerHeight;
-                            confetti(rx, ry, "r")
-                        }, 80);
-                        setTimeout(() => {
-                            clearInterval(cel);
-                        }, 5000);
-                    }
+            const averageRotation = (bodyA.rigidBody.rotation() + bodyB.rigidBody.rotation()) / 2;
 
-                    if (newType == "t") {
-                        //Circle effect and merge effect
-                        expandingCircle(averageX, averageY, "black");
-                        mergeAllFruitsEffect();
-                    }
-                }
-                addFruit(newType, averageX, averageY);
-                const scoreaddition = Math.pow(
-                    Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
-                    2
-                );
-                SCORE += scoreaddition;
+            const newType = nextType(bodyA.fruitType);
 
-                if (canvas) {
-                    textPopup(averageX, averageY, `+${scoreaddition}`);
-                    confetti(averageX, averageY, newType);
+            if (canvas) {
+                //Some types have visual celebrations
+                if (newType == "r") {
+                    //Spawn confetti at random points throughout screen
+                    let cel = setInterval(() => {
+                        let rx = Math.random() * window.innerWidth;
+                        let ry = Math.random() * window.innerHeight;
+                        confetti(rx, ry, "r")
+                    }, 80);
+                    setTimeout(() => {
+                        clearInterval(cel);
+                    }, 5000);
                 }
 
-                Composite.remove(engine.world, bodyA);
-                Composite.remove(engine.world, bodyB);
-
-                extraOptions?.onScoreChange?.(SCORE);
-                extraOptions?.onMerge?.({
-                    bodies: [bodyA, bodyB],
-                    newType: newType,
-                    score: SCORE,
-                });
+                if (newType == "triangle") {
+                    //Circle effect and merge effect
+                    expandingCircle(averageX, averageY, "black");
+                    mergeAllFruitsEffect();
+                }
             }
+
+            const scoreaddition = Math.pow(
+                Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
+                2
+            );
+            SCORE += scoreaddition;
+
+            extraOptions?.onScoreChange?.(SCORE);
+            extraOptions?.onMerge?.({
+                bodies: [bodyA, bodyB],
+                newType: newType,
+                score: SCORE,
+            });
+
+            let newFruit = addFruit(newType, averageX, averageY);
+            newFruit.impactedByNew = true;
+            newFruit.rigidBody.setRotation(averageRotation);
+
+            //As any good biologist knows, being sad is a dominant trait
+            if (bodyA.isSad || bodyB.isSad) {
+                newFruit.isSad = true;
+            }
+
+            scheduledEvent(NEW_DAMPENING_TIME, () => {
+                newFruit.impactedByNew = false;
+            });
+
+            removeBody(bodyA);
+            removeBody(bodyB);
+
+            if (canvas) {
+
+
+                textPopup(averageX, averageY, `+${scoreaddition}`);
+                // confetti(averageX, averageY, newType);
+            }
+        }
+    }
+    function scheduledEvent(ticks, callback) {
+        SCHEDULED_EVENTS.push({
+            ticks: ticks,
+            callback: callback
         });
     }
-    Matter.Events.on(engine, "collisionStart", handleCollision);
     function setFruitStyle(body, type) {
         body.render = {
             ...body.render,
             ...TYPE_MAP[type],
         };
-        if (TYPE_MAP[type].type == "c") {
+        if (type && TYPE_MAP[type].type == "circle") {
             body.circleRadius = TYPE_MAP[type].radius;
         }
     }
     function addFruit(type, x, y, options) {
         let body
-        if (TYPE_MAP[type].type === "c") {
-            body = Bodies.circle(x, y, TYPE_MAP[type].radius);
-            body.specialRenderType = "circle";
-        } else if (TYPE_MAP[type].type === "t") {
-            body = Bodies.polygon(x, y, 3, TYPE_MAP[type].radius);
+        if (TYPE_MAP[type].type === "circle") {
+            body = addCircle(x, y, TYPE_MAP[type].radius);
+        } else if (TYPE_MAP[type].type === "triangle") {
+            //TODO: implement t
+        }
+        //Add any other options
+        if (options) {
+            if (options.forceRadius) {
+                removeBody(body);
+                body = addCircle(x, y, options.forceRadius);
+            }
+            if (options.velocity) {
+                body.rigidBody.setLinvel(options.velocity, true);
+            }
+            Object.assign(body, options);
         }
 
         //Give body angular spin
         if (TYPE_MAP[type].spawnSpin) {
-            Body.setAngularVelocity(body, TYPE_MAP[type].spawnSpin);
+            body.rigidBody.setAngvel(TYPE_MAP[type].spawnSpin);
         }
 
         setFruitStyle(body, type);
-        body.collisionFilter = GLOBAL_COLLISION;
+        if (options && options.forceRadius) body.circleRadius = options.forceRadius;
         body.fruitType = type;
         body.fruitTypeNumber = Object.keys(TYPE_MAP).indexOf(type);
-        body.restitution = 0.7;
-        body.friction = 0.1;
         body.hitYet = false;
-        body.id = Math.round(Math.random() * 1000000);
 
-        //Add any other options
-        if (options) {
-            Object.assign(body, options);
+        if (Math.random() * 10000 == 1) {
+            body.isSad = true;
         }
 
-        Composite.add(engine.world, [body]);
+
+        FRUITS.push(body);
         return body;
     }
     this.addFruit = addFruit;
@@ -713,11 +895,11 @@ function CombineGame(canvas, extraOptions) {
 
         LAST_DROP_TIME = state.lastDropTime;
         FRUITS.forEach((fruit) => {
-            Composite.remove(engine.world, fruit);
+            removeBody(fruit);
         }
         );
         state.fruits.forEach(function (fruit) {
-            addFruit(fruit.fruitType, fruit.position.x, fruit.position.y, {
+            addFruit(fruit.fruitType, fruit.position.x * RAPIER_MULTIPLIER, fruit.position.y * RAPIER_MULTIPLIER, {
                 velocity: fruit.velocity
             });
         });
@@ -730,9 +912,12 @@ function CombineGame(canvas, extraOptions) {
     this.getFullState = () => {
         const simplifiedFruits = FRUITS
             .map((body) => {
+                const position = body.rigidBody.translation();
+                const velocity = body.rigidBody.linvel();
+
                 return ({
-                    position: body.position,
-                    velocity: body.velocity,
+                    position: position,
+                    velocity: velocity,
                     fruitType: body.fruitType,
                 });
             });
@@ -762,7 +947,7 @@ function CombineGame(canvas, extraOptions) {
         localStorage.setItem("lastInteract", GAME_ID);
 
         DROPS++;
-        FRUITS.push(addFruit(CURRENT_TYPE, MOUSE_X, DROP_HEIGHT));
+        addFruit(CURRENT_TYPE, MOUSE_X, DROP_HEIGHT);
 
         updateCurrentAndNextType();
 
@@ -801,66 +986,35 @@ function CombineGame(canvas, extraOptions) {
     }
 
     //Create constraints
-    const ground = Bodies.rectangle(
-        0 + SCREEN_WIDTH / 2,
-        SCREEN_HEIGHT + 100,
-        SCREEN_WIDTH,
-        200,
-        {
-            isStatic: true,
-            collisionFilter: GLOBAL_COLLISION,
-        }
-    );
-    ground.friction = 0;
-    const leftWall = Bodies.rectangle(
-        -100,
-        SCREEN_HEIGHT / 2,
-        200,
-        SCREEN_HEIGHT * 5,
-        {
-            isStatic: true,
-            collisionFilter: GLOBAL_COLLISION
-        }
-    );
-    const rightWall = Bodies.rectangle(
-        SCREEN_WIDTH + 100,
-        SCREEN_HEIGHT / 2,
-        200,
-        SCREEN_HEIGHT * 5,
-        {
-            isStatic: true,
-            collisionFilter: GLOBAL_COLLISION
-        }
-    );
-    const topSensor = Bodies.rectangle(
-        canvas.width / 2,
-        DROP_HEIGHT * 2,
-        canvas.width,
-        10,
-        {
-            isStatic: true,
-            isSensor: true,
-            render: {
-                fillStyle: "rgb(0, 0, 0)",
-            },
-            collisionFilter: GLOBAL_COLLISION
-        }
-    );
-    topSensor.death = true;
-    Composite.add(engine.world, [ground, leftWall, rightWall, topSensor]);
+    //Create ground
+    let thickness = 10;
+    addWall(0.0, SCREEN_HEIGHT + thickness, SCREEN_WIDTH, thickness);
+    addWall(SCREEN_WIDTH + thickness, SCREEN_HEIGHT / 2, 10, SCREEN_HEIGHT);
+    addWall(-thickness, SCREEN_HEIGHT / 2, 10, SCREEN_HEIGHT);
+
+    const topSensor = {
+        fill: "#000",
+        y: DROP_HEIGHT * 2
+    }
 
 
     //Create display ball if we are gonna render
-    let displayFruit
+    let displayFruit = {
+        renderType: "circle",
+        type: "circle",
+        renderFirst: true,
+        position: { x: SCREEN_WIDTH / 2, y: DROP_HEIGHT },
+        render: {
+            fillStyle: "red",
+        },
+        circleRadius: 5
+    }
     if (canvas) {
-        displayFruit = Bodies.circle(SCREEN_WIDTH / 2, DROP_HEIGHT, 10, {
-            isStatic: true,
-            isSensor: true,
-        });
-        displayFruit.specialRenderType = "circle";
-        displayFruit.renderFirst = true;
-        Composite.add(engine.world, displayFruit);
+        BODIES.push(displayFruit);
+        setFruitStyle(displayFruit, CURRENT_TYPE);
     }
 
     this.resetToDefaultValues();
 }
+//Export the game
+export default CombineGame;
