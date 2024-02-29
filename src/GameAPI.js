@@ -196,7 +196,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         }
 
     }
-   
+
     const drawBodiesToCanvas = (bodies) => {
         bodies.forEach(body => {
             const position = {};
@@ -212,12 +212,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             ctx.beginPath();
 
             applyBodyStylesToCanvas(body);
-            if (body.impactedByNew) {
-                ctx.fillStyle = "black";
-            }
-            if (body.velocityCapped) {
-                ctx.fillStyle = "pink";
-            }
 
             switch (body.type) {
                 case "text":
@@ -580,7 +574,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
                 Body.applyForce(body1, body1.position, force)
 
-                let backup = scheduledEvent(3000/TICKS_PER_SECOND,() => {
+                let backup = scheduledEvent(3000 / TICKS_PER_SECOND, () => {
                     //if the bodies havnt merged yet, just remove them
                     if (!body1.merged) Composite.remove(engine.world, body1);
                     if (!body2.merged) Composite.remove(engine.world, body2);
@@ -595,7 +589,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     mergesSoFar++;
                     clearTimeout(backup);
                     if (mergesSoFar == mergesExpected) {
-                        scheduledEvent(1000/TICKS_PER_SECOND,() => {
+                        scheduledEvent(1000 / TICKS_PER_SECOND, () => {
                             merge();
                         });
                     }
@@ -605,7 +599,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             }
         }
 
-        scheduledEvent(5000/TICKS_PER_SECOND,merge);
+        scheduledEvent(5000 / TICKS_PER_SECOND, merge);
     }
     function addCircle(x, y, radius) {
         let ballColliderDesc = RAPIER.ColliderDesc.ball(radius / RAPIER_MULTIPLIER).setRestitution(BALL_RESTITUTION);
@@ -625,7 +619,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             renderType: "circle",
             rigidBody: ballRigidBody,
             colliderDesc: ballColliderDesc,
-            collider:collider
+            collider: collider
         }
         BODIES.push(addition);
         return addition
@@ -676,7 +670,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
             confetti.noFace = true;
             confetti.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
-            scheduledEvent((2000 + Math.random() * 1000)/TICKS_PER_SECOND,() => {
+            scheduledEvent((2000 + Math.random() * 1000) / TICKS_PER_SECOND, () => {
                 removeBody(confetti);
             });
         }
@@ -690,8 +684,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             text: textValue,
             position: { x: x, y: y },
         }
-        
-        scheduledEvent(2000/TICKS_PER_SECOND,() => {
+
+        scheduledEvent(2000 / TICKS_PER_SECOND, () => {
             BODIES = BODIES.filter((b) => b.id != text.id);
         });
     }
@@ -790,7 +784,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         confetti(rx, ry, "r")
                     }, 80);
 
-                    scheduledEvent(5000/TICKS_PER_SECOND,() => {
+                    scheduledEvent(5000 / TICKS_PER_SECOND, () => {
                         clearInterval(cel);
                     });
                 }
@@ -824,7 +818,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 newFruit.isSad = true;
             }
 
-            scheduledEvent(NEW_DAMPENING_TIME/TICKS_PER_SECOND, () => {
+            scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
                 newFruit.impactedByNew = false;
             });
 
@@ -837,24 +831,42 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             }
         }
     }
-    function markTouchingImpacted(f,depth){
-        const depthLimit =4;
-        if(depth>=depthLimit) return;
-        console.log(world);
-        world.contactPairsWith(f.collider, (otherCollider) => {
-            console.log(otherCollider, "colides");
-            let otherBody = BODIES.find((b) => b.collider.handle == otherCollider.handle);
-            if (otherBody.fruitType&&!otherBody.impactedByNew) {
-                otherBody.impactedByNew = true;
-                scheduledEvent(NEW_DAMPENING_TIME/TICKS_PER_SECOND, () => {
-                    otherBody.impactedByNew = false;
+    function markTouchingImpacted(f, depth) {
+        const depthLimit = 2;
+        if (depth >= depthLimit) return;
+
+        //get all balls touching f by checking if their distance is less than the sum of their radii
+        FRUITS.forEach((fruit) => {
+            if (fruit.id == f.id) return;
+            let distance = Math.sqrt(Math.pow(fruit.rigidBody.translation().x - f.rigidBody.translation().x, 2) + Math.pow(fruit.rigidBody.translation().y - f.rigidBody.translation().y, 2));
+            let sumOfRadii = (fruit.colliderDesc.shape.radius) + (f.colliderDesc.shape.radius);
+            console.log(distance, sumOfRadii);
+            if (distance < sumOfRadii) {
+                fruit.impactedByNew = true;
+                scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
+                    fruit.impactedByNew = false;
                 });
-            }
-            if(!stop){
-                markTouchingImpacted(otherBody,!depth?1:depth+1);
+                markTouchingImpacted(fruit, !depth ? 1 : depth + 1);
             }
         });
     }
+
+
+
+    //     world.contactPairsWith(f.collider, (otherCollider) => {
+    //         console.log(otherCollider, "colides");
+    //         let otherBody = BODIES.find((b) => b.collider.handle == otherCollider.handle);
+    //         if (otherBody.fruitType && !otherBody.impactedByNew) {
+    //             otherBody.impactedByNew = true;
+    //             scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
+    //                 otherBody.impactedByNew = false;
+    //             });
+    //         }
+    //         if (!stop) {
+    //             markTouchingImpacted(otherBody, !depth ? 1 : depth + 1);
+    //         }
+    //     });
+    // }
     function scheduledEvent(ticks, callback) {
         SCHEDULED_EVENTS.push({
             ticks: ticks,
@@ -936,7 +948,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             let addedFruit = addFruit(fruit.fruitType, fruit.position.x * RAPIER_MULTIPLIER, fruit.position.y * RAPIER_MULTIPLIER, {
                 velocity: fruit.velocity
             });
-            
+
             addedFruit.rigidBody.setRotation(fruit.angle);
         });
 
@@ -992,7 +1004,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         //Update DROP_HEIGHT so the "next up ball" moves too
         displayFruit.position.y = -9999;
-        scheduledEvent(DROP_MIN_INTERVAL/TICKS_PER_SECOND,() => {
+        scheduledEvent(DROP_MIN_INTERVAL / TICKS_PER_SECOND, () => {
             displayFruit.position.y = DROP_HEIGHT;
         });
 
