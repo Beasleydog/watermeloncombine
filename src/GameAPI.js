@@ -106,7 +106,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const MAX_FRUIT_VELOCITY = 5;
     const NEW_DAMPENING_TIME = 500;
     const DAMP_AMOUNT = 200;
-    const VERTICAL_EXPLODE_DAMP_MULTIPLIER = 2;
+    const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     const TICKS_PER_SECOND = 60;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
@@ -329,6 +329,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 const velocity = body.rigidBody.linvel();
                 if (velocity.y < 0) {
                     body.rigidBody.setLinearDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
+                    //TODO: Change this logic. We shouldn't be damping all velocities we should just be ensuring that it doesnt get jolted around with a suddent velocity change.
+                    //Maybe store the last velocity and if it changes too much, dampen it
+
                 }
             } else {
                 body.rigidBody.setAngularDamping(0);
@@ -832,7 +835,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         }
     }
     function markTouchingImpacted(f, depth) {
-        const depthLimit = 2;
+        const depthLimit = 3;
         if (depth >= depthLimit) return;
 
         //get all balls touching f by checking if their distance is less than the sum of their radii
