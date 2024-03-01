@@ -88,6 +88,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
     let DROP_MIN_INTERVAL = 500;
     let MOUSE_X = SCREEN_WIDTH / 2;
+    let MOUSE_Y = SCREEN_HEIGHT / 2;
     let CURRENT_TYPE;
     let NEXT_TYPE;
     let RNG_SEED = Math.random() * 10000000;
@@ -102,7 +103,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     let FRUITS = [];
     let LAST_TIME_TOO_HIGH = -1;
     let RAPIER_MULTIPLIER = 100;
-    const BALL_RESTITUTION = .2;
+    const BALL_RESTITUTION = .4;
     const MAX_FRUIT_VELOCITY = 5;
     const NEW_DAMPENING_TIME = 500;
     const DAMP_AMOUNT = 200;
@@ -232,8 +233,22 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         2 * Math.PI
                     );
                     ctx.fill();
-
                     if (!body.noFace) {
+                        const xDiff = MOUSE_X - position.x;
+                        const yDiff = MOUSE_Y - position.y;
+
+                        const largestPossibleXDiff = (position.x > MOUSE_X ? position.x : SCREEN_WIDTH - position.x);
+                        const largestPossibleYDiff = (position.y > MOUSE_Y ? position.y : SCREEN_HEIGHT - position.y);
+
+                        const xPercent = (xDiff / largestPossibleXDiff);
+                        const yPercent = (yDiff / largestPossibleYDiff);
+
+                        let xShift = xPercent * radius * .01;
+                        let yShift = yPercent * radius * .01;
+
+                        let shiftAngle = Math.atan2(yDiff, xDiff);
+                        let shiftMagnitude = Math.sqrt(Math.pow(xShift, 2) + Math.pow(yShift, 2));
+
                         //Draw face 😃😃
                         //If ball is black, fill white
                         if (body.render.fillStyle === "#000000") {
@@ -248,20 +263,35 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         //Center canvas at position
                         ctx.translate(position.x, position.y);
                         //Rotate to the angle of the body
+                        let angle;
                         if (body.rigidBody) {
-                            ctx.rotate(body.rigidBody.rotation());
+                            angle = body.rigidBody.rotation();
+                            ctx.rotate(angle);
                         }
                         ctx.beginPath();
                         if (body.isSad) {
-                            ctx.arc(0, radius * .25, radius * .5, 1 * Math.PI, 0);
+                            ctx.arc(0, radius * .25, radius * .65, 1 * Math.PI, 0);
                         } else {
-                            ctx.arc(0, radius * .05, radius * .5, 0, 1 * Math.PI);
+                            ctx.arc(0, radius * .05, radius * .65, 0, 1 * Math.PI);
 
                         }
+
+                        //Subtract angle from shiftAngle
+                        shiftAngle -= angle;
+                        xShift = Math.cos(shiftAngle) * shiftMagnitude;
+                        yShift = Math.sin(shiftAngle) * shiftMagnitude;
+
                         ctx.fill();
                         ctx.beginPath();
-                        ctx.arc(radius * .2, -radius * .2, radius * .15, 0, 2 * Math.PI);
-                        ctx.arc(-radius * .2, -radius * .2, radius * .15, 0, 2 * Math.PI);
+                        ctx.arc(radius * .3 + xShift, -radius * .3 + yShift, radius * .16, 0, 2 * Math.PI);
+                        ctx.arc(-radius * .3 + xShift, -radius * .3 + yShift, radius * .16, 0, 2 * Math.PI);
+                        ctx.fill();
+                        ctx.closePath();
+
+                        ctx.globalAlpha *= .2;
+                        ctx.beginPath();
+                        ctx.arc(radius * .3, -radius * .3, radius * .18, 0, 2 * Math.PI);
+                        ctx.arc(-radius * .3, -radius * .3, radius * .18, 0, 2 * Math.PI);
                         ctx.fill();
                         ctx.closePath();
                     }
@@ -319,16 +349,41 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 } else {
                     body.velocityCapped = false;
                 }
+
+                //Cap acceleration
+                if (body.lastVelocity) {
+                    let velocityDiff = {
+                        x: Math.abs(body.lastVelocity.x - velocity.x),
+                        y: Math.abs(body.lastVelocity.y - velocity.y)
+                    }
+                    let difMag = Math.sqrt(Math.pow(velocityDiff.x, 2) + Math.pow(velocityDiff.y, 2));
+                    if (difMag > 2) {
+                        body.accelLimited = true;
+                        body.rigidBody.setLinearDamping(DAMP_AMOUNT);
+                        let callback = () => {
+                            if (body.merged) return;
+                            body.accelLimited = false;
+                            body.rigidBody.setLinearDamping(0);
+                        }
+                        scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, callback);
+                    } else {
+                        // body.accelLimited = false;
+                        // body.rigidBody.setLinearDamping(0);
+
+                    }
+                }
+                body.lastVelocity = velocity;
             }
             if (body.impactedByNew) {
-                //Damp body
-                body.rigidBody.setAngularDamping(DAMP_AMOUNT);
-                body.rigidBody.setLinearDamping(DAMP_AMOUNT);
-
+                //Lower bouncieness
+                body.collider.setRestitution(0);
+                body.rigidBody.setLinearDamping(DAMP_AMOUNT * .1);
+                body.rigidBody.setAngularDamping(DAMP_AMOUNT * .1);
                 //If body is moving up, dampen it more
                 const velocity = body.rigidBody.linvel();
                 if (velocity.y < 0) {
                     body.rigidBody.setLinearDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
+                    body.rigidBody.setAngularDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
                     //TODO: Change this logic. We shouldn't be damping all velocities we should just be ensuring that it doesnt get jolted around with a suddent velocity change.
                     //Maybe store the last velocity and if it changes too much, dampen it
 
@@ -336,6 +391,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             } else {
                 body.rigidBody.setAngularDamping(0);
                 body.rigidBody.setLinearDamping(0);
+                body.collider.setRestitution(BALL_RESTITUTION);
             }
         });
 
@@ -1021,7 +1077,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         const realMouseX = e.clientX;
         MOUSE_X = (realMouseX - canvas.getBoundingClientRect().left) / canvas.getBoundingClientRect().width * canvas.width;
-
+        MOUSE_Y = e.clientY;
         constrainMouseX(realMouseX);
     }
     function constrainMouseX(realMouseX) {
