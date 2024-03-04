@@ -266,7 +266,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     break;
             }
 
-            if (body.hasFace) {
+            if (body.hasFace&&false) {
                 const radius = body.circleRadius || body.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
 
                 const xDiff = MOUSE_X - position.x;
@@ -352,7 +352,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             event.ticks--;
             if (event.ticks <= 0) {
                 if (event.callback) event.callback();
-                event.clear(true);
+                event.clear(true,true);
             }
         });
 
@@ -716,16 +716,18 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
                 let backupCallback = (onTime) => {
                     console.log("backup got called",onTime,"did we already accidently merge ",accidentlyMerged);
-                    if(onTime&&accidentlyMerged)return;
+                    if(onTime||accidentlyMerged)return;
                     mergesSoFar++;
                     console.log("mergesSoFar", mergesSoFar, "mergesExpected", mergesExpected);
                     if (mergesSoFar >= mergesExpected) {
-                        scheduledEvent(10000 / TICKS_PER_SECOND, () => {
+                        scheduledEvent(4000 / TICKS_PER_SECOND, () => {
                             merge();
                         });
                     }
                 }
-                let backup = scheduledEvent(3000 / TICKS_PER_SECOND, backupCallback, [body1, body2], backupCallback);
+                let backup = scheduledEvent(3000 / TICKS_PER_SECOND, (()=>{backupCallback(true)}), [body1, body2], (onTime)=>{
+                    backupCallback(onTime)
+                });
 
                 let inheritGravAndFilter = (newFruit, mergingFruits) => {
                     if (mergingFruits[0].passGravFilterTraits || mergingFruits[1].passGravFilterTraits) {
@@ -740,11 +742,12 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 let accidentlyMerged = false;
                 let accMergeCallback = (newFruit, mergingFruits) => {
                     if (accidentlyMerged) return;
-                    accidentlyMerged = true;
 
                     inheritGravAndFilter(newFruit, mergingFruits);
 
-                    backup.clear(false);
+                    backup.clear(true,false);
+
+                    accidentlyMerged = true;
                 }
 
                 body1.passGravFilterTraits = true;
@@ -1067,17 +1070,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     //     });
     // }
     function clearEventsForBody(body) {
-        let removedEvents = [];
-
         SCHEDULED_EVENTS.forEach((event) => {
             if (event.bodyHandles.includes(body.rigidBody.handle)) {
-                removedEvents.push(event);
-                event.clear();
-            }
-        });
-
-        removedEvents.forEach((event) => {
-            event.clear();
+                event.clear(true,false);
+        }
         });
     }
     function scheduledEvent(ticks, callback, bodiesInvolved, clearCallback) {
@@ -1086,12 +1082,12 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (bodiesInvolved) {
             bodyHandles = bodiesInvolved.map((body) => body.rigidBody.handle);
         }
-        const clearFunction = (callFunction) => {
+        const clearFunction = (callFunction,onTime) => {
             SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
                 return event.id != id
             });
-            if(callFunction ==undefined||callFunction){
-            if (clearCallback) clearCallback();
+            if(callFunction){
+            if (clearCallback) clearCallback(onTime);
             }
         };
         SCHEDULED_EVENTS.push({
