@@ -210,7 +210,7 @@ async function sendLeaderboardScore(scoreToSend, dataURL) {
     let newData = await fetch(`${LEADERBOARD_URL}?data=${encodeURIComponent(encryptedData)}`);
     let newJson = await newData.json();
 
-    leaderboardCasFocused = CURRENT_MODE === "cas";
+    leaderboardCasFocused = CURRENT_MODE === "casual";
     updateLeaderboardStrings();
 
     renderLeaderboard(newJson);
@@ -245,7 +245,7 @@ function getLeaderboard() {
     leaderboard.innerHTML = "";
 
     //Fetch the leaderboard and display it in the popup
-    fetch(LEADERBOARD_URL + `?mode=${leaderboardCasFocused ? "cas" : "ranked"}`)
+    fetch(LEADERBOARD_URL + `?mode=${leaderboardCasFocused ? "casual" : "ranked"}`)
         .then((response) => response.json())
         .then((data) => {
             if (leaderboardCasFocused) {
