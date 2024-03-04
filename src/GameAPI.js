@@ -628,15 +628,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         let cleanup = () => {
             console.log("reached cleanup");
-            // if (!secondPass) {
-            //     console.log("first pass");
-            //     FRUITS = BODIES.filter((body) => body.fruitType);
+            if (!secondPass) {
+                console.log("first pass");
+                FRUITS = BODIES.filter((body) => body.fruitType);
 
-            //     scheduledEvent(2000 / TICKS_PER_SECOND, () => {
-            //         mergeAllFruitsEffect(true);
-            //     });
-            //     return;
-            // }
+                scheduledEvent(2000 / TICKS_PER_SECOND, () => {
+                    mergeAllFruitsEffect(true);
+                });
+                return;
+            }
             console.log("cleaning after sceond");
             FRUITS.forEach((fruit) => {
                 fruit.collider.setCollisionGroups(generateFilter([1], [1]));
@@ -680,6 +680,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             // Loop through fruitOfNum
             let mergesExpected = Math.floor(fruitOfNum.length / 2);
             let mergesSoFar = 0;
+
+            scheduledEvent(6000 / TICKS_PER_SECOND, () => {
+                merge();
+            });
+
             for (var i = 0; i < fruitOfNum.length - 1; i += 2) {
                 var body1 = fruitOfNum[i];
                 var body2 = fruitOfNum[i + 1];
@@ -714,20 +719,20 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
                 body1.rigidBody.addForce(force, true);
 
-                let backupCallback = (onTime) => {
-                    console.log("backup got called",onTime,"did we already accidently merge ",accidentlyMerged);
-                    if(onTime||accidentlyMerged)return;
-                    mergesSoFar++;
-                    console.log("mergesSoFar", mergesSoFar, "mergesExpected", mergesExpected);
-                    if (mergesSoFar >= mergesExpected) {
-                        scheduledEvent(4000 / TICKS_PER_SECOND, () => {
-                            merge();
-                        });
-                    }
-                }
-                let backup = scheduledEvent(3000 / TICKS_PER_SECOND, (()=>{backupCallback(true)}), [body1, body2], (onTime)=>{
-                    backupCallback(onTime)
-                });
+                // let backupCallback = (onTime) => {
+                //     console.log("backup got called",onTime,"did we already accidently merge ",accidentlyMerged);
+                //     if(onTime||accidentlyMerged)return;
+                //     mergesSoFar++;
+                //     console.log("mergesSoFar", mergesSoFar, "mergesExpected", mergesExpected);
+                //     if (mergesSoFar >= mergesExpected) {
+                //         scheduledEvent(4000 / TICKS_PER_SECOND, () => {
+                //             merge();
+                //         });
+                //     }
+                // }
+                // let backup = scheduledEvent(3000 / TICKS_PER_SECOND, (()=>{backupCallback(true)}), [body1, body2], (onTime)=>{
+                //     backupCallback(onTime)
+                // });
 
                 let inheritGravAndFilter = (newFruit, mergingFruits) => {
                     if (mergingFruits[0].passGravFilterTraits || mergingFruits[1].passGravFilterTraits) {
@@ -739,22 +744,24 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     }
                 }
 
-                let accidentlyMerged = false;
-                let accMergeCallback = (newFruit, mergingFruits) => {
-                    if (accidentlyMerged) return;
+                // let accidentlyMerged = false;
+                // let accMergeCallback = (newFruit, mergingFruits) => {
+                //     if (accidentlyMerged) return;
 
-                    inheritGravAndFilter(newFruit, mergingFruits);
+                //     inheritGravAndFilter(newFruit, mergingFruits);
 
-                    backup.clear(true,false);
+                //     backup.clear(true,false);
 
-                    accidentlyMerged = true;
-                }
+                //     accidentlyMerged = true;
+                // }
 
                 body1.passGravFilterTraits = true;
                 body2.passGravFilterTraits = true;
 
-                body1.onMerge =accMergeCallback
-                body2.onMerge = accMergeCallback
+                // body1.onMerge =accMergeCallback
+                // body2.onMerge = accMergeCallback
+                body1.onMerge =inheritGravAndFilter;
+                body2.onMerge = inheritGravAndFilter;
 
             }
         }
