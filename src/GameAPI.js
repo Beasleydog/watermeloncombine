@@ -69,24 +69,22 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             type: "circle"
         },
         t: {
-            fillStyle: "#FF0000",
+            fillStyle: "#ffffff",
             strokeStyle: "#cccccc",
             hasStroke: true,
-            lineWidth: 5,
+            lineWidth: 10,
             radius: 80,
             type: "triangle",
-            spawnSpin: .1
         }
     };
+    const TICKS_PER_SECOND = 60;
+    let CURRENT_TICK = 0;
 
-    const GLOBAL_COLLISION = {
-        group: 1,
-    }
     const SCREEN_WIDTH = 1366;
     const SCREEN_HEIGHT = 777;
     const DEFAULT_DROP_HEIGHT = 30;
     let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
-    let DROP_MIN_INTERVAL = 500;
+    let DROP_MIN_INTERVAL = .500 * TICKS_PER_SECOND;
     let MOUSE_X = SCREEN_WIDTH / 2;
     let MOUSE_Y = SCREEN_HEIGHT / 2;
     let CURRENT_TYPE;
@@ -94,6 +92,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     let RNG_SEED = Math.random() * 10000000;
     let LAST_DROP_TIME = 0;
     let CAN_DIE = true;
+    const DEATH_TICK_TIME = 3 * TICKS_PER_SECOND;
     const GAME_ID = Math.random().toString(36).substring(7);
     let DROPS = 0;
     let MINIMIZE_DUPLICATES = false;
@@ -106,11 +105,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const BALL_RESTITUTION = .4;
     const MAX_FRUIT_VELOCITY = 5;
     const NEW_DAMPENING_TIME = 500;
-    const DAMP_AMOUNT = 200;
+    const DAMP_AMOUNT = 250;
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
-    const TICKS_PER_SECOND = 60;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
+
     this.loadExtraOptions = (options) => {
         extraOptions = options;
     }
@@ -145,6 +144,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const gravity = { x: 0, y: 9.81 };
     const eventQueue = new RAPIER.EventQueue(true);
     const world = new RAPIER.World(gravity);
+    world.integrationParameters.numSolverIterations = 20;
 
     //Rendering stuff
     const ctx = canvas?.getContext("2d");
@@ -165,7 +165,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         drawBodiesToCanvas(laterBodies);
     }
     function applyBodyStylesToCanvas(body) {
-        const RAINBOW_COLOR = `hsl(${(Date.now() / 5) % 360}, 100%, 50%)`;
+        const RAINBOW_COLOR = `hsl(${(CURRENT_TICK) % 360}, 100%, 50%)`;
         let fill = body.render.fillStyle;
         if (fill === "r") fill = RAINBOW_COLOR;
 
@@ -183,15 +183,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             let blurAmount = body.render.shadowBlur;
             ctx.shadowBlur = blurAmount
                 ? blurAmount *
-                (Math.abs(((Date.now() / 50) % blurAmount) - blurAmount / 2) /
+                (Math.abs(((CURRENT_TICK / 50) % blurAmount) - blurAmount / 2) /
                     blurAmount)
                 : 0;
         }
         if (body.render.effect === "dance") {
             //Make offset move in a circle
             const offset = 50;
-            const x = Math.cos(Date.now() / 500) * offset;
-            const y = Math.sin(Date.now() / 500) * offset;
+            const x = Math.cos(CURRENT_TICK / 500) * offset;
+            const y = Math.sin(CURRENT_TICK / 500) * offset;
             ctx.shadowOffsetX = x;
             ctx.shadowOffsetY = y;
         }
@@ -233,78 +233,106 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         2 * Math.PI
                     );
                     ctx.fill();
-                    if (!body.noFace) {
-                        const xDiff = MOUSE_X - position.x;
-                        const yDiff = MOUSE_Y - position.y;
-
-                        const largestPossibleXDiff = (position.x > MOUSE_X ? position.x : SCREEN_WIDTH - position.x);
-                        const largestPossibleYDiff = (position.y > MOUSE_Y ? position.y : SCREEN_HEIGHT - position.y);
-
-                        const xPercent = (xDiff / largestPossibleXDiff);
-                        const yPercent = (yDiff / largestPossibleYDiff);
-
-                        let xShift = xPercent * radius * .01;
-                        let yShift = yPercent * radius * .01;
-
-                        let shiftAngle = Math.atan2(yDiff, xDiff);
-                        let shiftMagnitude = Math.sqrt(Math.pow(xShift, 2) + Math.pow(yShift, 2));
-
-                        //Draw face 😃😃
-                        //If ball is black, fill white
-                        if (body.render.fillStyle === "#000000") {
-                            ctx.fillStyle = "white";
-                        } else {
-                            ctx.fillStyle = "black";
-                        }
-                        ctx.globalAlpha *= .5;
-                        //Apply filter to darken
-                        // ctx.filter = "brightness(0.5)";
-                        // console.log()
-                        //Center canvas at position
-                        ctx.translate(position.x, position.y);
-                        //Rotate to the angle of the body
-                        let angle;
-                        if (body.rigidBody) {
-                            angle = body.rigidBody.rotation();
-                            ctx.rotate(angle);
-                        }
-                        ctx.beginPath();
-                        if (body.isSad) {
-                            ctx.arc(0, radius * .25, radius * .65, 1 * Math.PI, 0);
-                        } else {
-                            ctx.arc(0, radius * .05, radius * .65, 0, 1 * Math.PI);
-
-                        }
-
-                        //Subtract angle from shiftAngle
-                        shiftAngle -= angle;
-                        xShift = Math.cos(shiftAngle) * shiftMagnitude;
-                        yShift = Math.sin(shiftAngle) * shiftMagnitude;
-
-                        ctx.fill();
-                        ctx.beginPath();
-                        ctx.arc(radius * .3 + xShift, -radius * .3 + yShift, radius * .16, 0, 2 * Math.PI);
-                        ctx.arc(-radius * .3 + xShift, -radius * .3 + yShift, radius * .16, 0, 2 * Math.PI);
-                        ctx.fill();
-                        ctx.closePath();
-
-                        ctx.globalAlpha *= .2;
-                        ctx.beginPath();
-                        ctx.arc(radius * .3, -radius * .3, radius * .18, 0, 2 * Math.PI);
-                        ctx.arc(-radius * .3, -radius * .3, radius * .18, 0, 2 * Math.PI);
-                        ctx.fill();
-                        ctx.closePath();
+                    if (body.render.hasStroke) {
+                        ctx.stroke();
                     }
                     break;
                 case "triangle":
+                    ctx.translate(position.x, position.y);
+                    ctx.rotate(body.rigidBody.rotation());
+                    const vertices = Array.from(body.colliderDesc.shape.vertices);
+                    ctx.beginPath();
+                    ctx.moveTo(vertices[0] * RAPIER_MULTIPLIER, vertices[1] * RAPIER_MULTIPLIER);
+                    for (let i = 0; i < vertices.length; i += 2) {
+                        let x = vertices[i] * RAPIER_MULTIPLIER;
+                        let y = vertices[i + 1] * RAPIER_MULTIPLIER;
+                        ctx.lineTo(x, y);
+                    };
+                    ctx.lineTo(vertices[0] * RAPIER_MULTIPLIER, vertices[1] * RAPIER_MULTIPLIER);
+                    if (body.render.hasStroke) {
+                        ctx.stroke();
+                    }
+                    ctx.fill();
+                    ctx.closePath();
+                    ctx.rotate(-body.rigidBody.rotation());
+
+                    ctx.translate(-position.x, -position.y);
                     break;
                 default:
                     break;
             }
-            ctx.closePath();
-            if (body.render.hasStroke) {
-                ctx.stroke();
+
+            if (body.hasFace) {
+                const radius = body.circleRadius || body.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
+
+                const xDiff = MOUSE_X - position.x;
+                const yDiff = MOUSE_Y - position.y;
+                const diffMag = Math.sqrt(Math.pow(xDiff, 2) + Math.pow(yDiff, 2));
+
+                const xPercent = (xDiff / radius);
+                const yPercent = (yDiff / radius);
+
+                let xShift = xPercent * radius * .05;
+                let yShift = yPercent * radius * .05;
+
+                let shiftAngle = Math.atan2(yDiff, xDiff);
+                let shiftMagnitude = Math.sqrt(Math.pow(xShift, 2) + Math.pow(yShift, 2));
+
+                //Draw face 😃😃
+                //If ball is black, fill white
+                if (body.render.fillStyle === "#000000") {
+                    ctx.fillStyle = "white";
+                } else {
+                    ctx.fillStyle = "black";
+                }
+                ctx.globalAlpha *= .5;
+                //Apply filter to darken
+                // ctx.filter = "brightness(0.5)";
+                // console.log()
+                //Center canvas at position
+                ctx.translate(position.x, position.y);
+                //Rotate to the angle of the body
+                let angle;
+                if (body.rigidBody) {
+                    angle = body.rigidBody.rotation();
+                    ctx.rotate(angle);
+                }
+                ctx.beginPath();
+                if (body.isSad) {
+                    ctx.arc(0, radius * .25, radius * .65, 1 * Math.PI, 0);
+                } else {
+                    ctx.arc(0, radius * .05, radius * .65, 0, 1 * Math.PI);
+
+                }
+
+                //Subtract angle from shiftAngle
+                shiftAngle -= angle;
+                xShift = Math.cos(shiftAngle) * shiftMagnitude;
+                yShift = Math.sin(shiftAngle) * shiftMagnitude;
+
+                xShift *= 1.1;
+                yShift *= .7;
+
+                if (diffMag > radius) {
+                    xShift = 0;
+                    yShift = 0;
+                }
+
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(radius * .3 + xShift, -radius * .3 + yShift, radius * .16, 0, 2 * Math.PI);
+                ctx.arc(-radius * .3 + xShift, -radius * .3 + yShift, radius * .16, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.closePath();
+
+                ctx.globalAlpha *= .2;
+                ctx.beginPath();
+                ctx.arc(radius * .3, -radius * .3, radius * .18, 0, 2 * Math.PI);
+                ctx.arc(-radius * .3, -radius * .3, radius * .18, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.closePath();
             }
+            ctx.closePath();
             ctx.restore();
         });
     }
@@ -312,14 +340,20 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
 
     this.tick = () => {
+
+        CURRENT_TICK++;
+        // console.log("----");
+        // console.log(SCHEDULED_EVENTS);
         SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
             event.ticks--;
             if (event.ticks <= 0) {
-                event.callback();
+                if (event.callback) event.callback();
+                console.log("removing event at tick ", event.ticks);
                 return false;
             }
             return true;
         });
+
         FRUITS = BODIES.filter(body => body.fruitType);
         FRUITS.forEach(body => {
             //Ensure balls don't go offscreen
@@ -365,7 +399,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                             body.accelLimited = false;
                             body.rigidBody.setLinearDamping(0);
                         }
-                        scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, callback);
+                        scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, callback, [body]);
                     } else {
                         // body.accelLimited = false;
                         // body.rigidBody.setLinearDamping(0);
@@ -378,18 +412,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 //Lower bouncieness
                 body.collider.setRestitution(0);
                 body.rigidBody.setLinearDamping(DAMP_AMOUNT * .1);
-                body.rigidBody.setAngularDamping(DAMP_AMOUNT * .1);
                 //If body is moving up, dampen it more
                 const velocity = body.rigidBody.linvel();
                 if (velocity.y < 0) {
                     body.rigidBody.setLinearDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
-                    body.rigidBody.setAngularDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
                     //TODO: Change this logic. We shouldn't be damping all velocities we should just be ensuring that it doesnt get jolted around with a suddent velocity change.
                     //Maybe store the last velocity and if it changes too much, dampen it
 
                 }
             } else {
-                body.rigidBody.setAngularDamping(0);
                 body.rigidBody.setLinearDamping(0);
                 body.collider.setRestitution(BALL_RESTITUTION);
             }
@@ -432,18 +463,17 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 let tooHigh = (position.y + radius) * RAPIER_MULTIPLIER < topSensor.y;
                 if (tooHigh) {
                     if (LAST_TIME_TOO_HIGH != -1) {
-                        let max = 3000;
-                        let current = Date.now() - LAST_TIME_TOO_HIGH;
+                        let current = CURRENT_TICK - LAST_TIME_TOO_HIGH;
 
-                        if (canvas) topSensor.fill = `rgb(${(current / max) * 255},0,0)`;
+                        if (canvas) topSensor.fill = `rgb(${(current / DEATH_TICK_TIME) * 255},0,0)`;
 
-                        if (current > max && CAN_DIE) {
+                        if (current > DEATH_TICK_TIME && CAN_DIE) {
                             gameOver();
 
                             return;
                         }
                     } else {
-                        LAST_TIME_TOO_HIGH = Date.now();
+                        LAST_TIME_TOO_HIGH = CURRENT_TICK;
                     }
                 }
                 return tooHigh;
@@ -463,11 +493,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         // requestAnimationFrame(this.loop);
     }
     function setGravityOn(bool) {
-        if (bool) {
-            world.setGravity({ x: 0, y: 9.81 });
-        } else {
-            world.setGravity({ x: 0, y: 0 });
-        }
+        //Loop through all bodies and set their gravity
+        BODIES.forEach((body) => {
+            if (!body.rigidBody) return;
+            body.rigidBody.setGravityScale(bool ? 1 : 0);
+        });
     }
     function clearBallsAnimation(callback) {
         //Disable gravity 
@@ -558,30 +588,75 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         constrainMouseX();
     }
-    function mergeAllFruitsEffect() {
+    function generateFilter(member, filter) {
+        let memberFilter = "0000000000000000".split("");
+        member.forEach((group) => {
+            memberFilter[group] = "1";
+        });
+        memberFilter = memberFilter.reverse().join("");
+        memberFilter = parseInt(memberFilter, 2).toString(16).toUpperCase();
+        memberFilter = "0".repeat((4 - memberFilter.length)) + memberFilter;
+
+        let filterFilter = "0000000000000000".split("");
+        filter.forEach((group) => {
+            filterFilter[group] = "1";
+        });
+        filterFilter = filterFilter.reverse().join("");
+        filterFilter = parseInt(filterFilter, 2).toString(16).toUpperCase();
+        filterFilter = "0".repeat((4 - filterFilter.length)) + filterFilter;
+
+        const filterString = "0x" + memberFilter + filterFilter;
+        return filterString;
+    }
+    function mergeAllFruitsEffect(secondPass) {
         //TODO: FIX THIS
         //Turn all into sensors with specific id. Then in merge logic check by id?
         //https://rapier.rs/docs/user_guides/javascript/collider_collision_groups/
         var num = -1;
-
         setGravityOn(false);
+
+        //Update collision filtering so bodies only collide with others of the same type
+        FRUITS.forEach((fruit) => {
+            fruit.collider.setCollisionGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
+            fruit.collider.setSolverGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
+        });
+
+        console.log("merge effect called");
         CAN_DIE = false;
 
         let cleanup = () => {
-            //Get all matterjs objects and set their collision filter to 1
-            engine.world.bodies.forEach((x) => {
-                x.collisionFilter = GLOBAL_COLLISION;
+            console.log("reached cleanup");
+            // if (!secondPass) {
+            //     console.log("first pass");
+            //     FRUITS = BODIES.filter((body) => body.fruitType);
+
+            //     scheduledEvent(2000 / TICKS_PER_SECOND, () => {
+            //         mergeAllFruitsEffect(true);
+            //     });
+            //     return;
+            // }
+            console.log("cleaning after sceond");
+            FRUITS.forEach((fruit) => {
+                fruit.collider.setCollisionGroups(generateFilter([1], [1]));
+                fruit.collider.setSolverGroups(generateFilter([1], [1]));
+                fruit.passGravFilterTraits = false;
             });
 
-            //Re-enable gravity
-            engine.world.gravity.y = 1;
+            setGravityOn(true);
             CAN_DIE = true;
+
+            console.log("tsting scheduledevent");
+            scheduledEvent(2000 / TICKS_PER_SECOND, () => {
+                console.log("still works");
+            });
         }
         let merge = () => {
+            console.log("merge called");
             //Kill all velocities
-            engine.world.bodies.forEach((x) => {
-                x.velocity.x = 0;
-                x.velocity.y = 0;
+            BODIES.forEach((body) => {
+                if (body.rigidBody) {
+                    body.rigidBody.setLinvel({ x: 0, y: 0 }, true);
+                }
             });
 
             let fruitOfNum = [];
@@ -590,6 +665,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 fruitOfNum = FRUITS.filter((x) => x.fruitTypeNumber == num);
                 //If num is more than the highest fruit type, end the loop
                 //Length is 12, stop at 11 so we dont merge the last one
+                console.log("num ", num);
                 if (num > 10) {
                     cleanup();
                     return;
@@ -602,25 +678,21 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 var body1 = fruitOfNum[i];
                 var body2 = fruitOfNum[i + 1];
 
+                let position1 = body1.rigidBody.translation();
+                let position2 = body2.rigidBody.translation();
+
                 //Ensure that body2 is the lower one
-                if (body1.position.y > body2.position.y) {
+                if (position1.y > position2.y) {
                     let temp = body1;
                     body1 = body2;
                     body2 = temp;
                 }
 
-                //Use collision filters to only make fruit of the same type merge
-                var collisionFilter = {
-                    group: Math.random() * 100000
-                };
-                body1.collisionFilter = collisionFilter;
-                body2.collisionFilter = collisionFilter;
-
-                var position1 = body1.position;
-                var position2 = body2.position;
+                position1 = body1.rigidBody.translation();
+                position2 = body2.rigidBody.translation();
                 let distance = Math.sqrt(Math.pow(position2.x - position1.x, 2) + Math.pow(position2.y - position1.y, 2));
-                var speed = .00005 * body1.mass * distance;
-
+                var speed = 5 * distance * body1.rigidBody.mass();
+                console.log("seped", speed);
                 //Using trig, find the force to apply to body1 to make it move towards body2
                 let angle = Math.atan2(position2.y - position1.y, position2.x - position1.x);
                 let xComp = Math.cos(angle) * speed;
@@ -631,34 +703,83 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     y: yComp
                 }
 
-                Body.applyForce(body1, body1.position, force)
+                body1.rigidBody.addForce(force, true);
 
-                let backup = scheduledEvent(3000 / TICKS_PER_SECOND, () => {
-                    //if the bodies havnt merged yet, just remove them
-                    if (!body1.merged) Composite.remove(engine.world, body1);
-                    if (!body2.merged) Composite.remove(engine.world, body2);
-
+                let backupCallback = () => {
                     mergesSoFar++;
-                    if (mergesSoFar == mergesExpected) {
-                        merge();
-                    }
-                });
-
-                body1.onMerge = () => {
-                    mergesSoFar++;
-                    clearTimeout(backup);
-                    if (mergesSoFar == mergesExpected) {
-                        scheduledEvent(1000 / TICKS_PER_SECOND, () => {
+                    console.log("mergesSoFar", mergesSoFar, "mergesExpected", mergesExpected);
+                    if (mergesSoFar >= mergesExpected) {
+                        scheduledEvent(2000 / TICKS_PER_SECOND, () => {
                             merge();
                         });
                     }
                 }
+                let backup = scheduledEvent(3000 / TICKS_PER_SECOND, backupCallback, [body1, body2], backupCallback);
 
+                let inheritGravAndFilter = (newFruit, mergingFruits) => {
+                    if (mergingFruits[0].passGravFilterTraits || mergingFruits[1].passGravFilterTraits) {
+                        newFruit.collider.setCollisionGroups(generateFilter([newFruit.fruitTypeNumber], [1, newFruit.fruitTypeNumber]));
+                        newFruit.collider.setSolverGroups(generateFilter([newFruit.fruitTypeNumber], [1, newFruit.fruitTypeNumber]));
+                        newFruit.rigidBody.setGravityScale(0);
+                        newFruit.passGravFilterTraits = true;
+                        console.log("recursion ");
+                        newFruit.onMerge = inheritGravAndFilter;
+                    }
+                }
+
+                let accidentlyMerged = false;
+                let accMergeCallback = (newFruit, mergingFruits) => {
+                    if (accidentlyMerged) return;
+                    accidentlyMerged = true;
+
+                    inheritGravAndFilter(newFruit, mergingFruits);
+
+                    backup.clear();
+                }
+
+                body1.passGravFilterTraits = true;
+                body2.passGravFilterTraits = true;
+
+                body1.onMerge = accMergeCallback;
+                body2.onMerge = accMergeCallback;
 
             }
         }
+        console.log("scheduling");
+        scheduledEvent(50 / TICKS_PER_SECOND, merge);
+    }
+    function addTriangle(x, y, radius) {
+        //Add points to array. Points make equilateral triangle of furthest length radius
+        radius /= RAPIER_MULTIPLIER;
+        const points = new Float32Array([
+            0, -radius,
+            radius * Math.sqrt(3) / 2, radius / 2,
+            -radius * Math.sqrt(3) / 2, radius / 2
+        ])
+        let triangleColliderDesc = RAPIER.ColliderDesc.convexHull(points);
+        let triangleBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
+        let triangleRigidBody = world.createRigidBody(triangleBodyDesc);
 
-        scheduledEvent(5000 / TICKS_PER_SECOND, merge);
+        triangleColliderDesc.setRestitution(BALL_RESTITUTION);
+        triangleColliderDesc.setFriction(1);
+        triangleColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
+        triangleColliderDesc.setMass(radius * RAPIER_MULTIPLIER);
+        triangleColliderDesc.shape.radius = radius * .5;
+        //Damp triangles cuz they damn bouncy
+        triangleRigidBody.setLinearDamping(DAMP_AMOUNT);
+
+        let collider = world.createCollider(triangleColliderDesc, triangleRigidBody);
+        collider.setRestitution(0);
+        let addition = {
+            id: Math.random(),
+            type: "triangle",
+            renderType: "triangle",
+            rigidBody: triangleRigidBody,
+            colliderDesc: triangleColliderDesc,
+            collider: collider
+        }
+        BODIES.push(addition);
+        return addition;
     }
     function addCircle(x, y, radius) {
         let ballColliderDesc = RAPIER.ColliderDesc.ball(radius / RAPIER_MULTIPLIER).setRestitution(BALL_RESTITUTION);
@@ -666,11 +787,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let ballRigidBody = world.createRigidBody(ballBodyDesc);
 
         ballColliderDesc.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-        ballColliderDesc.setFriction(.1);
+        ballColliderDesc.setFriction(.5);
         ballColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
 
         ballColliderDesc.setMass(radius)
-
         let collider = world.createCollider(ballColliderDesc, ballRigidBody);
         let addition = {
             id: Math.random(),
@@ -689,14 +809,18 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let wallBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
         let wallRigidBody = world.createRigidBody(wallBodyDesc);
         wallColliderDesc.setFriction(1);
-        world.createCollider(wallColliderDesc, wallRigidBody);
+        let collider = world.createCollider(wallColliderDesc, wallRigidBody);
+        collider.setCollisionGroups(generateFilter([1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]));
+        collider.setSolverGroups(generateFilter([1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]));
+
         let addition = ({
             type: "rectangle",
             rigidBody: wallRigidBody,
             colliderDesc: wallColliderDesc,
             render: {
                 fillStyle: "black"
-            }
+            },
+            collider: collider
         });
         BODIES.push(addition);
         return addition;
@@ -705,6 +829,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         world.removeRigidBody(body.rigidBody);
         BODIES = BODIES.filter((b) => b.id != body.id);
         FRUITS = FRUITS.filter((b) => b.id != body.id);
+        clearEventsForBody(body);
     }
     function confetti(x, y, type) {
         //Spawn confetti at points x,y. Match the style of the type
@@ -727,11 +852,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 opacity: 1
             }
 
-            confetti.noFace = true;
             confetti.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
             scheduledEvent((2000 + Math.random() * 1000) / TICKS_PER_SECOND, () => {
                 removeBody(confetti);
-            });
+            }, [confetti]);
         }
     }
     function textPopup(x, y, textValue) {
@@ -819,10 +943,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             bodyA.merged = true;
             bodyB.merged = true;
 
-            //If body has a beforeMerge listner, ring its line 📞📞
-            if (bodyA.onMerge) bodyA.onMerge();
-            if (bodyB.onMerge) bodyB.onMerge();
-
             const aPosition = bodyA.rigidBody.translation();
             const bPosition = bodyB.rigidBody.translation();
 
@@ -832,6 +952,40 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             const averageRotation = (bodyA.rigidBody.rotation() + bodyB.rigidBody.rotation()) / 2;
 
             const newType = nextType(bodyA.fruitType);
+
+            const scoreaddition = Math.pow(
+                Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
+                2
+            );
+            SCORE += scoreaddition;
+
+            extraOptions?.onScoreChange?.(SCORE);
+            extraOptions?.onMerge?.({
+                bodies: [bodyA, bodyB],
+                newType: newType,
+                score: SCORE,
+            });
+
+            console.log("adding new fruit");
+            let newFruit = addFruit(newType, averageX, averageY);
+            newFruit.impactedByNew = true;
+            newFruit.rigidBody.setRotation(averageRotation);
+
+            //As any good biologist knows, being sad is a dominant trait
+            if (bodyA.isSad || bodyB.isSad) {
+                newFruit.isSad = true;
+            }
+
+            scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
+                newFruit.impactedByNew = false;
+            }, [newFruit]);
+
+            //If body has a beforeMerge listner, ring its line 📞📞
+            if (bodyA.onMerge) bodyA.onMerge(newFruit, [bodyA, bodyB]);
+            if (bodyB.onMerge) bodyB.onMerge(newFruit, [bodyA, bodyB]);
+
+            removeBody(bodyA);
+            removeBody(bodyB);
 
             if (canvas) {
                 //Some types have visual celebrations
@@ -847,44 +1001,22 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         clearInterval(cel);
                     });
                 }
-
-                if (newType == "triangle") {
+                if (newType == "t") {
                     //Circle effect and merge effect
+                    //Spin the new fruit
+                    newFruit.rigidBody.setAngvel(2, true);
+
+                    // FRUITS.forEach((fruit) => {
+                    //     //Set angle to going away from newfruit position
+                    //     let angle = Math.atan2(fruit.rigidBody.translation().y - newFruit.rigidBody.translation().y, fruit.rigidBody.translation().x - newFruit.rigidBody.translation().x);
+
+                    //     let speed = Math.random() * 1 + 10;
+                    //     fruit.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
+                    // });
+
                     expandingCircle(averageX, averageY, "black");
                     mergeAllFruitsEffect();
                 }
-            }
-
-            const scoreaddition = Math.pow(
-                Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
-                2
-            );
-            SCORE += scoreaddition;
-
-            extraOptions?.onScoreChange?.(SCORE);
-            extraOptions?.onMerge?.({
-                bodies: [bodyA, bodyB],
-                newType: newType,
-                score: SCORE,
-            });
-
-            let newFruit = addFruit(newType, averageX, averageY);
-            newFruit.impactedByNew = true;
-            newFruit.rigidBody.setRotation(averageRotation);
-
-            //As any good biologist knows, being sad is a dominant trait
-            if (bodyA.isSad || bodyB.isSad) {
-                newFruit.isSad = true;
-            }
-
-            scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
-                newFruit.impactedByNew = false;
-            });
-
-            removeBody(bodyA);
-            removeBody(bodyB);
-
-            if (canvas) {
                 textPopup(averageX, averageY, `+${scoreaddition}`);
                 // confetti(averageX, averageY, newType);
             }
@@ -899,12 +1031,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             if (fruit.id == f.id) return;
             let distance = Math.sqrt(Math.pow(fruit.rigidBody.translation().x - f.rigidBody.translation().x, 2) + Math.pow(fruit.rigidBody.translation().y - f.rigidBody.translation().y, 2));
             let sumOfRadii = (fruit.colliderDesc.shape.radius) + (f.colliderDesc.shape.radius);
-            console.log(distance, sumOfRadii);
             if (distance < sumOfRadii) {
                 fruit.impactedByNew = true;
                 scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
                     fruit.impactedByNew = false;
-                });
+                }, [fruit]);
                 markTouchingImpacted(fruit, !depth ? 1 : depth + 1);
             }
         });
@@ -926,11 +1057,44 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     //         }
     //     });
     // }
-    function scheduledEvent(ticks, callback) {
+    function clearEventsForBody(body) {
+        let removedEvents = [];
+
+        SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
+            if (event.bodyHandles.includes(body.rigidBody.handle)) {
+                removedEvents.push(event);
+                return false;
+            }
+            return true;
+        });
+
+        removedEvents.forEach((event) => {
+            event.clear();
+        });
+    }
+    function scheduledEvent(ticks, callback, bodiesInvolved, clearCallback) {
+        let id = Math.random();
+        let bodyHandles = [];
+        if (bodiesInvolved) {
+            bodyHandles = bodiesInvolved.map((body) => body.rigidBody.handle);
+        }
+        const clearFunction = () => {
+            if (clearCallback) clearCallback();
+            SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
+                return event.id != id
+            });
+        };
+        console.log("pushing new event", callback, ticks);
         SCHEDULED_EVENTS.push({
             ticks: ticks,
-            callback: callback
+            callback: callback,
+            bodyHandles: bodyHandles,
+            id: id,
+            clear: clearFunction
         });
+        return {
+            clear: clearFunction
+        }
     }
     function setFruitStyle(body, type) {
         body.render = {
@@ -946,8 +1110,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (TYPE_MAP[type].type === "circle") {
             body = addCircle(x, y, TYPE_MAP[type].radius);
         } else if (TYPE_MAP[type].type === "triangle") {
-            //TODO: implement t
+            body = addTriangle(x, y, TYPE_MAP[type].radius);
+
         }
+        body.collider.setCollisionGroups(generateFilter([1], [1]));
+        body.collider.setSolverGroups(generateFilter([1], [1]));
         //Add any other options
         if (options) {
             if (options.forceRadius) {
@@ -964,13 +1131,13 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (TYPE_MAP[type].spawnSpin) {
             body.rigidBody.setAngvel(TYPE_MAP[type].spawnSpin);
         }
-
+        // body.collider.setSensor(true);
         setFruitStyle(body, type);
         if (options && options.forceRadius) body.circleRadius = options.forceRadius;
         body.fruitType = type;
         body.fruitTypeNumber = Object.keys(TYPE_MAP).indexOf(type);
         body.hitYet = false;
-
+        body.hasFace = true;
         if (Math.random() * 10000 == 1) {
             body.isSad = true;
         }
@@ -998,7 +1165,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         SCORE = state.score;
         extraOptions?.onScoreChange?.(SCORE);
 
-        LAST_DROP_TIME = state.lastDropTime;
         FRUITS.forEach((fruit) => {
             removeBody(fruit);
         }
@@ -1038,7 +1204,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             drops: DROPS,
             randsGenerated: RANDOMS_GENERATED,
             score: SCORE,
-            lastDropTime: LAST_DROP_TIME,
             minimizeDuplicates: MINIMIZE_DUPLICATES
         }
     }
@@ -1051,8 +1216,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (!canvas) return;
         if (!CAN_DIE) return;
 
-        if (Date.now() - LAST_DROP_TIME < DROP_MIN_INTERVAL) return;
-        LAST_DROP_TIME = Date.now();
+        if (CURRENT_TICK - LAST_DROP_TIME < DROP_MIN_INTERVAL) return;
+        LAST_DROP_TIME = CURRENT_TICK;
 
         localStorage.setItem("lastInteract", GAME_ID);
 
@@ -1064,9 +1229,17 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         setFruitStyle(displayFruit, CURRENT_TYPE);
 
         //Update DROP_HEIGHT so the "next up ball" moves too
-        displayFruit.position.y = -9999;
-        scheduledEvent(DROP_MIN_INTERVAL / TICKS_PER_SECOND, () => {
-            displayFruit.position.y = DROP_HEIGHT;
+        BODIES.forEach((body) => {
+            if (body.id == displayFruit.id) {
+                body.position.y = -9999;
+            }
+        });
+        scheduledEvent(DROP_MIN_INTERVAL, () => {
+            BODIES.forEach((body) => {
+                if (body.id == displayFruit.id) {
+                    body.position.y = DROP_HEIGHT;
+                }
+            });
         });
 
         extraOptions?.onDrop?.();
@@ -1076,8 +1249,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (!canvas) return;
 
         const realMouseX = e.clientX;
+        const realMouseY = e.clientY;
         MOUSE_X = (realMouseX - canvas.getBoundingClientRect().left) / canvas.getBoundingClientRect().width * canvas.width;
-        MOUSE_Y = e.clientY;
+        MOUSE_Y = (realMouseY - canvas.getBoundingClientRect().top) / canvas.getBoundingClientRect().height * canvas.height;
         constrainMouseX(realMouseX);
     }
     function constrainMouseX(realMouseX) {
@@ -1117,7 +1291,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         render: {
             fillStyle: "red",
         },
-        circleRadius: 5
+        circleRadius: 5,
+        hasFace: true,
+        id: "displayFruit"
     }
     if (canvas) {
         BODIES.push(displayFruit);

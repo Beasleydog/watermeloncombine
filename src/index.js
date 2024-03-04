@@ -73,7 +73,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
 
     loadFromStorage();
     game.loop();
-
+    window.game = game;
     document.onclick = (e) => {
         if (!e.isTrusted) return;
         if (e.target.classList.contains("nodrop")) return;
