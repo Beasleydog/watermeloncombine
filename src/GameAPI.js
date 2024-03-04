@@ -70,7 +70,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         },
         t: {
             fillStyle: "#ffffff",
-            strokeStyle: "#cccccc",
+            strokeStyle: "#ffffff",
             hasStroke: true,
             lineWidth: 10,
             radius: 80,
@@ -214,6 +214,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
             applyBodyStylesToCanvas(body);
 
+            if(body.impactedByNew){
+                ctx.fillStyle="black";
+            }
+
             switch (body.type) {
                 case "text":
                     ctx.font = "30px Arial";
@@ -344,14 +348,12 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         CURRENT_TICK++;
         // console.log("----");
         // console.log(SCHEDULED_EVENTS);
-        SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
+        SCHEDULED_EVENTS.forEach((event) => {
             event.ticks--;
             if (event.ticks <= 0) {
                 if (event.callback) event.callback();
-                console.log("removing event at tick ", event.ticks);
-                return false;
+                event.clear(true);
             }
-            return true;
         });
 
         FRUITS = BODIES.filter(body => body.fruitType);
@@ -411,7 +413,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             if (body.impactedByNew) {
                 //Lower bouncieness
                 body.collider.setRestitution(0);
-                body.rigidBody.setLinearDamping(DAMP_AMOUNT * .1);
+                body.rigidBody.setLinearDamping(DAMP_AMOUNT * .5);
                 //If body is moving up, dampen it more
                 const velocity = body.rigidBody.linvel();
                 if (velocity.y < 0) {
@@ -648,6 +650,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             console.log("tsting scheduledevent");
             scheduledEvent(2000 / TICKS_PER_SECOND, () => {
                 console.log("still works");
+            },[],(onTime)=>{
+                if(!onTime){
+                console.log("got cleared early");
+                }
             });
         }
         let merge = () => {
@@ -678,6 +684,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 var body1 = fruitOfNum[i];
                 var body2 = fruitOfNum[i + 1];
 
+                let mergeId = Math.random();
+                body1.specialMergeGroup = mergeId;
+                body2.specialMergeGroup = mergeId;
+
                 let position1 = body1.rigidBody.translation();
                 let position2 = body2.rigidBody.translation();
 
@@ -692,7 +702,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 position2 = body2.rigidBody.translation();
                 let distance = Math.sqrt(Math.pow(position2.x - position1.x, 2) + Math.pow(position2.y - position1.y, 2));
                 var speed = 5 * distance * body1.rigidBody.mass();
-                console.log("seped", speed);
                 //Using trig, find the force to apply to body1 to make it move towards body2
                 let angle = Math.atan2(position2.y - position1.y, position2.x - position1.x);
                 let xComp = Math.cos(angle) * speed;
@@ -705,11 +714,13 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
                 body1.rigidBody.addForce(force, true);
 
-                let backupCallback = () => {
+                let backupCallback = (onTime) => {
+                    console.log("backup got called",onTime,"did we already accidently merge ",accidentlyMerged);
+                    if(onTime&&accidentlyMerged)return;
                     mergesSoFar++;
                     console.log("mergesSoFar", mergesSoFar, "mergesExpected", mergesExpected);
                     if (mergesSoFar >= mergesExpected) {
-                        scheduledEvent(2000 / TICKS_PER_SECOND, () => {
+                        scheduledEvent(10000 / TICKS_PER_SECOND, () => {
                             merge();
                         });
                     }
@@ -722,7 +733,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         newFruit.collider.setSolverGroups(generateFilter([newFruit.fruitTypeNumber], [1, newFruit.fruitTypeNumber]));
                         newFruit.rigidBody.setGravityScale(0);
                         newFruit.passGravFilterTraits = true;
-                        console.log("recursion ");
                         newFruit.onMerge = inheritGravAndFilter;
                     }
                 }
@@ -734,20 +744,20 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
                     inheritGravAndFilter(newFruit, mergingFruits);
 
-                    backup.clear();
+                    backup.clear(false);
                 }
 
                 body1.passGravFilterTraits = true;
                 body2.passGravFilterTraits = true;
 
-                body1.onMerge = accMergeCallback;
-                body2.onMerge = accMergeCallback;
+                body1.onMerge =accMergeCallback
+                body2.onMerge = accMergeCallback
 
             }
         }
-        console.log("scheduling");
         scheduledEvent(50 / TICKS_PER_SECOND, merge);
     }
+    this.mergeAllFruitsEffect= mergeAllFruitsEffect;
     function addTriangle(x, y, radius) {
         //Add points to array. Points make equilateral triangle of furthest length radius
         radius /= RAPIER_MULTIPLIER;
@@ -966,7 +976,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 score: SCORE,
             });
 
-            console.log("adding new fruit");
             let newFruit = addFruit(newType, averageX, averageY);
             newFruit.impactedByNew = true;
             newFruit.rigidBody.setRotation(averageRotation);
@@ -1060,12 +1069,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     function clearEventsForBody(body) {
         let removedEvents = [];
 
-        SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
+        SCHEDULED_EVENTS.forEach((event) => {
             if (event.bodyHandles.includes(body.rigidBody.handle)) {
                 removedEvents.push(event);
-                return false;
+                event.clear();
             }
-            return true;
         });
 
         removedEvents.forEach((event) => {
@@ -1078,13 +1086,14 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (bodiesInvolved) {
             bodyHandles = bodiesInvolved.map((body) => body.rigidBody.handle);
         }
-        const clearFunction = () => {
-            if (clearCallback) clearCallback();
+        const clearFunction = (callFunction) => {
             SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
                 return event.id != id
             });
+            if(callFunction ==undefined||callFunction){
+            if (clearCallback) clearCallback();
+            }
         };
-        console.log("pushing new event", callback, ticks);
         SCHEDULED_EVENTS.push({
             ticks: ticks,
             callback: callback,
