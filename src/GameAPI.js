@@ -68,9 +68,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             effect: "dance",
             type: "circle"
         },
-        t: {
+        triangle: {
             fillStyle: "#ffffff",
-            strokeStyle: "#ffffff",
+            strokeStyle: "#cccccc",
             hasStroke: true,
             lineWidth: 10,
             radius: 80,
@@ -92,6 +92,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     let RNG_SEED = Math.random() * 10000000;
     let LAST_DROP_TIME = 0;
     let CAN_DIE = true;
+    let CALM_NEW_FRUIT = true;
     const DEATH_TICK_TIME = 3 * TICKS_PER_SECOND;
     const GAME_ID = Math.random().toString(36).substring(7);
     let DROPS = 0;
@@ -104,7 +105,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     let RAPIER_MULTIPLIER = 100;
     const BALL_RESTITUTION = .4;
     const MAX_FRUIT_VELOCITY = 5;
-    const NEW_DAMPENING_TIME = 500;
+    const NEW_DAMPENING_TIME = .3;
     const DAMP_AMOUNT = 250;
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     let SCHEDULED_EVENTS = [];
@@ -214,9 +215,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
             applyBodyStylesToCanvas(body);
 
-            if(body.impactedByNew){
-                ctx.fillStyle="black";
-            }
+            // if (body.accelLimited) {
+            //     ctx.fillStyle = "black";
+            // }
 
             switch (body.type) {
                 case "text":
@@ -266,7 +267,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     break;
             }
 
-            if (body.hasFace&&false) {
+            if (body.hasFace) {
                 const radius = body.circleRadius || body.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
 
                 const xDiff = MOUSE_X - position.x;
@@ -303,7 +304,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 }
                 ctx.beginPath();
                 if (body.isSad) {
-                    ctx.arc(0, radius * .25, radius * .65, 1 * Math.PI, 0);
+                    ctx.arc(0, radius * .55, radius * .65, 1 * Math.PI, 0);
                 } else {
                     ctx.arc(0, radius * .05, radius * .65, 0, 1 * Math.PI);
 
@@ -352,7 +353,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             event.ticks--;
             if (event.ticks <= 0) {
                 if (event.callback) event.callback();
-                event.clear(true,true);
+                event.clear(true, true);
             }
         });
 
@@ -360,9 +361,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         FRUITS.forEach(body => {
             //Ensure balls don't go offscreen
             const yPosition = body.rigidBody.translation().y;
-            if (yPosition > SCREEN_HEIGHT + 100) {
+            if (yPosition * RAPIER_MULTIPLIER > SCREEN_HEIGHT + 100) {
                 //Teleport body to center of screen
-                body.rigidBody.setTranslation({ x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 });
+                body.rigidBody.setTranslation({ x: SCREEN_WIDTH / RAPIER_MULTIPLIER / 2, y: SCREEN_HEIGHT / RAPIER_MULTIPLIER / 2 });
                 body.rigidBody.setLinvel({ x: 0, y: 0 }, true);
             }
 
@@ -385,6 +386,18 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 } else {
                     body.velocityCapped = false;
                 }
+            }
+            if (body.impactedByNew) {
+                //Lower bouncieness
+                body.collider.setRestitution(0);
+                body.rigidBody.setLinearDamping(DAMP_AMOUNT * .1);
+                //If body is moving up, dampen it more
+                const velocity = body.rigidBody.linvel();
+                if (velocity.y < 0) {
+                    body.rigidBody.setLinearDamping(DAMP_AMOUNT * .2 * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
+                }
+
+
 
                 //Cap acceleration
                 if (body.lastVelocity) {
@@ -393,7 +406,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         y: Math.abs(body.lastVelocity.y - velocity.y)
                     }
                     let difMag = Math.sqrt(Math.pow(velocityDiff.x, 2) + Math.pow(velocityDiff.y, 2));
-                    if (difMag > 2) {
+                    if (difMag > 1) {
                         body.accelLimited = true;
                         body.rigidBody.setLinearDamping(DAMP_AMOUNT);
                         let callback = () => {
@@ -401,27 +414,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                             body.accelLimited = false;
                             body.rigidBody.setLinearDamping(0);
                         }
-                        scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, callback, [body]);
-                    } else {
-                        // body.accelLimited = false;
-                        // body.rigidBody.setLinearDamping(0);
-
+                        scheduledEvent(NEW_DAMPENING_TIME * TICKS_PER_SECOND, callback, [body]);
                     }
                 }
                 body.lastVelocity = velocity;
-            }
-            if (body.impactedByNew) {
-                //Lower bouncieness
-                body.collider.setRestitution(0);
-                body.rigidBody.setLinearDamping(DAMP_AMOUNT * .5);
-                //If body is moving up, dampen it more
-                const velocity = body.rigidBody.linvel();
-                if (velocity.y < 0) {
-                    body.rigidBody.setLinearDamping(DAMP_AMOUNT * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
-                    //TODO: Change this logic. We shouldn't be damping all velocities we should just be ensuring that it doesnt get jolted around with a suddent velocity change.
-                    //Maybe store the last velocity and if it changes too much, dampen it
-
-                }
             } else {
                 body.rigidBody.setLinearDamping(0);
                 body.collider.setRestitution(BALL_RESTITUTION);
@@ -528,6 +524,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         SCORE = 0;
         LAST_DROP_TIME = 0;
         CAN_DIE = true;
+        CALM_NEW_FRUIT = true;
 
         resetRandom();
         //Remove all bodies
@@ -610,10 +607,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         const filterString = "0x" + memberFilter + filterFilter;
         return filterString;
     }
-    function mergeAllFruitsEffect(secondPass) {
-        //TODO: FIX THIS
-        //Turn all into sensors with specific id. Then in merge logic check by id?
-        //https://rapier.rs/docs/user_guides/javascript/collider_collision_groups/
+    function mergeAllFruitsEffect(depth) {
+        if (!depth) depth = 0;
         var num = -1;
         setGravityOn(false);
 
@@ -625,19 +620,25 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         console.log("merge effect called");
         CAN_DIE = false;
+        CALM_NEW_FRUIT = false;
 
         let cleanup = () => {
-            console.log("reached cleanup");
-            if (!secondPass) {
-                console.log("first pass");
-                FRUITS = BODIES.filter((body) => body.fruitType);
+            let duplicatesFound = false;
+            FRUITS = BODIES.filter((body) => body.fruitType);
 
-                scheduledEvent(2000 / TICKS_PER_SECOND, () => {
-                    mergeAllFruitsEffect(true);
-                });
+            //Loop through all fruits and check if any have the same type
+            FRUITS.forEach((fruit) => {
+                let sameType = FRUITS.filter((f) => f.fruitTypeNumber == fruit.fruitTypeNumber);
+                if (sameType.length > 1) {
+                    duplicatesFound = true;
+                }
+            });
+
+            if (duplicatesFound && depth < 5) {
+                mergeAllFruitsEffect(depth + 1);
                 return;
             }
-            console.log("cleaning after sceond");
+
             FRUITS.forEach((fruit) => {
                 fruit.collider.setCollisionGroups(generateFilter([1], [1]));
                 fruit.collider.setSolverGroups(generateFilter([1], [1]));
@@ -646,15 +647,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
             setGravityOn(true);
             CAN_DIE = true;
-
-            console.log("tsting scheduledevent");
-            scheduledEvent(2000 / TICKS_PER_SECOND, () => {
-                console.log("still works");
-            },[],(onTime)=>{
-                if(!onTime){
-                console.log("got cleared early");
-                }
-            });
+            CALM_NEW_FRUIT = true;
         }
         let merge = () => {
             console.log("merge called");
@@ -662,6 +655,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             BODIES.forEach((body) => {
                 if (body.rigidBody) {
                     body.rigidBody.setLinvel({ x: 0, y: 0 }, true);
+                    body.rigidBody.setAngvel(0, true);
                 }
             });
 
@@ -669,19 +663,13 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             while (fruitOfNum.length <= 1) {
                 num++;
                 fruitOfNum = FRUITS.filter((x) => x.fruitTypeNumber == num);
-                //If num is more than the highest fruit type, end the loop
-                //Length is 12, stop at 11 so we dont merge the last one
-                console.log("num ", num);
-                if (num > 10) {
+                if (num > 9) {
                     cleanup();
                     return;
                 }
             }
-            // Loop through fruitOfNum
-            let mergesExpected = Math.floor(fruitOfNum.length / 2);
-            let mergesSoFar = 0;
 
-            scheduledEvent(6000 / TICKS_PER_SECOND, () => {
+            scheduledEvent(3 * TICKS_PER_SECOND, () => {
                 merge();
             });
 
@@ -719,21 +707,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
                 body1.rigidBody.addForce(force, true);
 
-                // let backupCallback = (onTime) => {
-                //     console.log("backup got called",onTime,"did we already accidently merge ",accidentlyMerged);
-                //     if(onTime||accidentlyMerged)return;
-                //     mergesSoFar++;
-                //     console.log("mergesSoFar", mergesSoFar, "mergesExpected", mergesExpected);
-                //     if (mergesSoFar >= mergesExpected) {
-                //         scheduledEvent(4000 / TICKS_PER_SECOND, () => {
-                //             merge();
-                //         });
-                //     }
-                // }
-                // let backup = scheduledEvent(3000 / TICKS_PER_SECOND, (()=>{backupCallback(true)}), [body1, body2], (onTime)=>{
-                //     backupCallback(onTime)
-                // });
-
                 let inheritGravAndFilter = (newFruit, mergingFruits) => {
                     if (mergingFruits[0].passGravFilterTraits || mergingFruits[1].passGravFilterTraits) {
                         newFruit.collider.setCollisionGroups(generateFilter([newFruit.fruitTypeNumber], [1, newFruit.fruitTypeNumber]));
@@ -744,30 +717,17 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     }
                 }
 
-                // let accidentlyMerged = false;
-                // let accMergeCallback = (newFruit, mergingFruits) => {
-                //     if (accidentlyMerged) return;
-
-                //     inheritGravAndFilter(newFruit, mergingFruits);
-
-                //     backup.clear(true,false);
-
-                //     accidentlyMerged = true;
-                // }
-
                 body1.passGravFilterTraits = true;
                 body2.passGravFilterTraits = true;
 
-                // body1.onMerge =accMergeCallback
-                // body2.onMerge = accMergeCallback
-                body1.onMerge =inheritGravAndFilter;
+                body1.onMerge = inheritGravAndFilter;
                 body2.onMerge = inheritGravAndFilter;
 
             }
         }
-        scheduledEvent(50 / TICKS_PER_SECOND, merge);
+        merge();
     }
-    this.mergeAllFruitsEffect= mergeAllFruitsEffect;
+    this.mergeAllFruitsEffect = mergeAllFruitsEffect;
     function addTriangle(x, y, radius) {
         //Add points to array. Points make equilateral triangle of furthest length radius
         radius /= RAPIER_MULTIPLIER;
@@ -796,7 +756,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             renderType: "triangle",
             rigidBody: triangleRigidBody,
             colliderDesc: triangleColliderDesc,
-            collider: collider
+            collider: collider,
+            rigidBodyDesc: triangleBodyDesc
         }
         BODIES.push(addition);
         return addition;
@@ -817,6 +778,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             type: "circle",
             renderType: "circle",
             rigidBody: ballRigidBody,
+            rigidBodyDesc: ballBodyDesc,
             colliderDesc: ballColliderDesc,
             collider: collider
         }
@@ -836,6 +798,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let addition = ({
             type: "rectangle",
             rigidBody: wallRigidBody,
+            rigidBodyDesc: wallBodyDesc,
             colliderDesc: wallColliderDesc,
             render: {
                 fillStyle: "black"
@@ -859,7 +822,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         for (let i = 0; i < 15; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 0.002;
+            const speed = Math.random() * 2 + 1;
             const confetti = addCircle(x + Math.cos(angle) * r, y + Math.sin(angle) * r, 5);
 
             //Make the confetti rigibdoy KinematicVelocityBased
@@ -867,13 +830,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
             confetti.render = {
                 fillStyle: color,
-                shadowBlur: 20,
-                effect: "pulse",
-                opacity: 1
             }
 
             confetti.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
-            scheduledEvent((2000 + Math.random() * 1000) / TICKS_PER_SECOND, () => {
+
+            //Set collision groups
+            confetti.collider.setCollisionGroups(generateFilter([15], [15]));
+            confetti.collider.setSolverGroups(generateFilter([15], [15]));
+
+            scheduledEvent((2 + Math.random() * 1) * TICKS_PER_SECOND, () => {
                 removeBody(confetti);
             }, [confetti]);
         }
@@ -888,7 +853,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             position: { x: x, y: y },
         }
 
-        scheduledEvent(2000 / TICKS_PER_SECOND, () => {
+        scheduledEvent(2 * TICKS_PER_SECOND, () => {
             BODIES = BODIES.filter((b) => b.id != text.id);
         });
     }
@@ -905,7 +870,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             render: {
                 strokeStyle: color,
                 lineWidth: 4,
-                opactiy: 1
+                opacity: 1
             }
         }
 
@@ -932,21 +897,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             bodyA.hitYet = true;
             bodyB.hitYet = true;
         }
-
-        // if (bodyA.impactedByNew || bodyB.impactedByNew) {
-        //     if(!bodyA.impactedByNew){
-        //         bodyA.impactedByNew = true;
-        //         scheduledEvent(NEW_DAMPENING_TIME/TICKS_PER_SECOND, () => {
-        //             bodyA.impactedByNew = false;
-        //         });
-        //     };
-        //     if(!bodyB.impactedByNew){
-        //         bodyB.impactedByNew = true;
-        //         scheduledEvent(NEW_DAMPENING_TIME/TICKS_PER_SECOND, () => {
-        //             bodyB.impactedByNew = false;
-        //         });
-        //     };
-        // }
 
         //If this isn't a new collision, ignore it
         if (!started) return;
@@ -986,16 +936,17 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 score: SCORE,
             });
 
-            let newFruit = addFruit(newType, averageX, averageY);
-            newFruit.impactedByNew = true;
+            let newFruit = addFruit(newType, averageX + 1, averageY);
+            newFruit.impactedByNew = CALM_NEW_FRUIT && true;
             newFruit.rigidBody.setRotation(averageRotation);
 
             //As any good biologist knows, being sad is a dominant trait
             if (bodyA.isSad || bodyB.isSad) {
                 newFruit.isSad = true;
             }
-
-            scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
+            console.log("just added a new one, it impacted others: ", newFruit.othersImpacted);
+            //If it doesnt impact others, remove the flag. Note that we leave it for a second so it can spread
+            scheduledEvent((newFruit.othersImpacted > 1 ? 1 : .1) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
                 newFruit.impactedByNew = false;
             }, [newFruit]);
 
@@ -1016,46 +967,53 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         confetti(rx, ry, "r")
                     }, 80);
 
-                    scheduledEvent(5000 / TICKS_PER_SECOND, () => {
+                    scheduledEvent(5 * TICKS_PER_SECOND, () => {
                         clearInterval(cel);
                     });
                 }
-                if (newType == "t") {
-                    //Circle effect and merge effect
-                    //Spin the new fruit
-                    newFruit.rigidBody.setAngvel(2, true);
-
-                    // FRUITS.forEach((fruit) => {
-                    //     //Set angle to going away from newfruit position
-                    //     let angle = Math.atan2(fruit.rigidBody.translation().y - newFruit.rigidBody.translation().y, fruit.rigidBody.translation().x - newFruit.rigidBody.translation().x);
-
-                    //     let speed = Math.random() * 1 + 10;
-                    //     fruit.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
-                    // });
+                if (newType == "triangle") {
+                    newFruit.rigidBody.setAngvel(10, true);
+                    newFruit.rigidBody.setAngularDamping(.7);
 
                     expandingCircle(averageX, averageY, "black");
-                    mergeAllFruitsEffect();
+                    //Update collision filtering so bodies only collide with others of the same type
+                    FRUITS.forEach((fruit) => {
+                        fruit.collider.setCollisionGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
+                        fruit.collider.setSolverGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
+                    });
+                    setGravityOn(false);
+                    scheduledEvent(5 * TICKS_PER_SECOND, () => {
+                        console.log("MERGING");
+                        mergeAllFruitsEffect();
+                    });
                 }
                 textPopup(averageX, averageY, `+${scoreaddition}`);
-                // confetti(averageX, averageY, newType);
+                //confetti(averageX, averageY, newType);
             }
         }
     }
-    function markTouchingImpacted(f, depth) {
+    function markTouchingImpacted(f, depth, listOfImpacted) {
         const depthLimit = 3;
         if (depth >= depthLimit) return;
+        if (!listOfImpacted) listOfImpacted = [];
+        f.othersImpacted = f.othersImpacted || 0;
+
+        FRUITS = BODIES.filter((body) => body.fruitType);
 
         //get all balls touching f by checking if their distance is less than the sum of their radii
         FRUITS.forEach((fruit) => {
+            if (listOfImpacted.includes(fruit.id)) return;
             if (fruit.id == f.id) return;
             let distance = Math.sqrt(Math.pow(fruit.rigidBody.translation().x - f.rigidBody.translation().x, 2) + Math.pow(fruit.rigidBody.translation().y - f.rigidBody.translation().y, 2));
             let sumOfRadii = (fruit.colliderDesc.shape.radius) + (f.colliderDesc.shape.radius);
             if (distance < sumOfRadii) {
-                fruit.impactedByNew = true;
-                scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
+                fruit.impactedByNew = CALM_NEW_FRUIT && true;
+                listOfImpacted.push(fruit.id);
+                f.othersImpacted++;
+                scheduledEvent(NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
                     fruit.impactedByNew = false;
                 }, [fruit]);
-                markTouchingImpacted(fruit, !depth ? 1 : depth + 1);
+                markTouchingImpacted(fruit, !depth ? 1 : depth + 1, listOfImpacted);
             }
         });
     }
@@ -1067,7 +1025,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     //         let otherBody = BODIES.find((b) => b.collider.handle == otherCollider.handle);
     //         if (otherBody.fruitType && !otherBody.impactedByNew) {
     //             otherBody.impactedByNew = true;
-    //             scheduledEvent(NEW_DAMPENING_TIME / TICKS_PER_SECOND, () => {
+    //             scheduledEvent(NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
     //                 otherBody.impactedByNew = false;
     //             });
     //         }
@@ -1079,8 +1037,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     function clearEventsForBody(body) {
         SCHEDULED_EVENTS.forEach((event) => {
             if (event.bodyHandles.includes(body.rigidBody.handle)) {
-                event.clear(true,false);
-        }
+                event.clear(true, false);
+            }
         });
     }
     function scheduledEvent(ticks, callback, bodiesInvolved, clearCallback) {
@@ -1089,12 +1047,12 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         if (bodiesInvolved) {
             bodyHandles = bodiesInvolved.map((body) => body.rigidBody.handle);
         }
-        const clearFunction = (callFunction,onTime) => {
+        const clearFunction = (callFunction, onTime) => {
             SCHEDULED_EVENTS = SCHEDULED_EVENTS.filter((event) => {
                 return event.id != id
             });
-            if(callFunction){
-            if (clearCallback) clearCallback(onTime);
+            if (callFunction) {
+                if (clearCallback) clearCallback(onTime);
             }
         };
         SCHEDULED_EVENTS.push({
@@ -1125,6 +1083,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             body = addTriangle(x, y, TYPE_MAP[type].radius);
 
         }
+        body.rigidBodyDesc.setCanSleep(false);
         body.collider.setCollisionGroups(generateFilter([1], [1]));
         body.collider.setSolverGroups(generateFilter([1], [1]));
         //Add any other options
@@ -1150,7 +1109,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         body.fruitTypeNumber = Object.keys(TYPE_MAP).indexOf(type);
         body.hitYet = false;
         body.hasFace = true;
-        if (Math.random() * 10000 == 1) {
+        if (Math.random() * 1000 == 1) {
             body.isSad = true;
         }
 

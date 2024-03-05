@@ -1,32 +1,28 @@
 <html>
 
 <head>
-  <link rel="stylesheet" href="index.css">
-  <script src="./GameAPI.js"></script>
+    <link rel="stylesheet" href="index.css">
 </head>
 
 <body style="display:none;">
-  <canvas id="gameCanvas" width="1366" height="777"></canvas>
-  <div id="score" class="nodrop">0</div>
-  <div id="rankedToggleContainer" class="nodrop">
-    <label for="rankedToggle" class="nodrop">Ranked</label>
-    <input id="rankedToggle" type="checkbox" class="nodrop">
-  </div>
-  <div id="warn">If you got the code prior to 2/15/2024 you should get the latest code from my profile
-    again, the old version has
-    some issues with embeding itself in posts</div>
-  <div id="leaderboardButton" class="nodrop">👑</div>
-  <div id="leaderboardPopup" class="nodrop">
-    <div id="leaderboardContent" class="nodrop">
-      <div id="leaderboardHeader" class="nodrop">Casual Leaderboard</div>
-      <div id="leaderboardModeToggle" class="nodrop">Ranked</div>
-      <div id="leaderboardSubtitle" class="nodrop">Ball drop order is random in casual mode.</div>
-      <div id="leaderboardEntries" class="nodrop">
-      </div>
+    <canvas id="gameCanvas" width="1366" height="777"></canvas>
+    <div id="score" class="nodrop">0</div>
+    <div id="rankedToggleContainer" class="nodrop">
+        <label for="rankedToggle" class="nodrop">Ranked</label>
+        <input id="rankedToggle" type="checkbox" class="nodrop">
     </div>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js">  </script>
-  <script src="./ballscript.js"></script>
+    <div id="warn">Smile update dropped 😃<br><br>I changed the physics, lemme know if its weird</div>
+    <div id="leaderboardButton" class="nodrop">👑</div>
+    <div id="leaderboardPopup" class="nodrop">
+        <div id="leaderboardContent" class="nodrop">
+            <div id="leaderboardHeader" class="nodrop">Casual Leaderboard</div>
+            <div id="leaderboardModeToggle" class="nodrop">Ranked</div>
+            <div id="leaderboardSubtitle" class="nodrop">Ball drop order is random in casual mode.</div>
+            <div id="leaderboardEntries" class="nodrop">
+            </div>
+        </div>
+    </div>
+    <script src="./main.js"></script>
 </body>
 
 </html

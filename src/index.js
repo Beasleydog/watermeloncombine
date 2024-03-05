@@ -1,7 +1,12 @@
 import CombineGame from './GameAPI.js';
 
-//TODO
-//Add code to enable closing from overlay
+document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
+        console.log("close ball")
+        parent.postMessage("closeBall", "*");
+    }
+});
+
 
 import('@dimforge/rapier2d').then(RAPIER => {
     //Don't work on small screens. 
@@ -10,9 +15,9 @@ import('@dimforge/rapier2d').then(RAPIER => {
         document.body.style.display = "unset";
     }
     //If hash includes "noembed" then remove warnText
-    if (window.location.hash.includes("noembed")) {
-        document.getElementById("warn").remove();
-    }
+    // if (window.location.hash.includes("noembed")) {
+    //     document.getElementById("warn").remove();
+    // }
 
     const popSound = new Audio("pop.mp3");
 
@@ -208,7 +213,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
         let newData = await fetch(`${LEADERBOARD_URL}?data=${encodeURIComponent(encryptedData)}`);
         let newJson = await newData.json();
 
-        leaderboardCasFocused = CURRENT_MODE === "cas";
+        leaderboardCasFocused = CURRENT_MODE === "casual";
         updateLeaderboardStrings();
 
         renderLeaderboard(newJson);
@@ -243,7 +248,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
         leaderboard.innerHTML = "";
 
         //Fetch the leaderboard and display it in the popup
-        fetch(LEADERBOARD_URL + `?mode=${leaderboardCasFocused ? "cas" : "ranked"}`)
+        fetch(LEADERBOARD_URL + `?mode=${leaderboardCasFocused ? "casual" : "ranked"}`)
             .then((response) => response.json())
             .then((data) => {
                 if (leaderboardCasFocused) {
