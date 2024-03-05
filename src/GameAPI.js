@@ -79,7 +79,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     };
     const TICKS_PER_SECOND = 60;
     let CURRENT_TICK = 0;
-
+    //Test
     const SCREEN_WIDTH = 1366;
     const SCREEN_HEIGHT = 777;
     const DEFAULT_DROP_HEIGHT = 30;
