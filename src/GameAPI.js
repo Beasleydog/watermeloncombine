@@ -68,13 +68,13 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             effect: "dance",
             type: "circle"
         },
-        triangle: {
+        t: {
             fillStyle: "#ffffff",
             strokeStyle: "#cccccc",
             hasStroke: true,
             lineWidth: 10,
             radius: 80,
-            type: "triangle",
+            type: "t",
         }
     };
     const TICKS_PER_SECOND = 60;
@@ -242,7 +242,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         ctx.stroke();
                     }
                     break;
-                case "triangle":
+                case "t":
                     ctx.translate(position.x, position.y);
                     ctx.rotate(body.rigidBody.rotation());
                     const vertices = Array.from(body.colliderDesc.shape.vertices);
@@ -728,36 +728,36 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         merge();
     }
     this.mergeAllFruitsEffect = mergeAllFruitsEffect;
-    function addTriangle(x, y, radius) {
-        //Add points to array. Points make equilateral triangle of furthest length radius
+    function addt(x, y, radius) {
+        //Add points to array. Points make equilateral t of furthest length radius
         radius /= RAPIER_MULTIPLIER;
         const points = new Float32Array([
             0, -radius,
             radius * Math.sqrt(3) / 2, radius / 2,
             -radius * Math.sqrt(3) / 2, radius / 2
         ])
-        let triangleColliderDesc = RAPIER.ColliderDesc.convexHull(points);
-        let triangleBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
-        let triangleRigidBody = world.createRigidBody(triangleBodyDesc);
+        let tColliderDesc = RAPIER.ColliderDesc.convexHull(points);
+        let tBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
+        let tRigidBody = world.createRigidBody(tBodyDesc);
 
-        triangleColliderDesc.setRestitution(BALL_RESTITUTION);
-        triangleColliderDesc.setFriction(1);
-        triangleColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
-        triangleColliderDesc.setMass(radius * RAPIER_MULTIPLIER);
-        triangleColliderDesc.shape.radius = radius * .5;
-        //Damp triangles cuz they damn bouncy
-        triangleRigidBody.setLinearDamping(DAMP_AMOUNT);
+        tColliderDesc.setRestitution(BALL_RESTITUTION);
+        tColliderDesc.setFriction(1);
+        tColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
+        tColliderDesc.setMass(radius * RAPIER_MULTIPLIER);
+        tColliderDesc.shape.radius = radius * .5;
+        //Damp ts cuz they damn bouncy
+        tRigidBody.setLinearDamping(DAMP_AMOUNT);
 
-        let collider = world.createCollider(triangleColliderDesc, triangleRigidBody);
+        let collider = world.createCollider(tColliderDesc, tRigidBody);
         collider.setRestitution(0);
         let addition = {
             id: Math.random(),
-            type: "triangle",
-            renderType: "triangle",
-            rigidBody: triangleRigidBody,
-            colliderDesc: triangleColliderDesc,
+            type: "t",
+            renderType: "t",
+            rigidBody: tRigidBody,
+            colliderDesc: tColliderDesc,
             collider: collider,
-            rigidBodyDesc: triangleBodyDesc
+            rigidBodyDesc: tBodyDesc
         }
         BODIES.push(addition);
         return addition;
@@ -971,7 +971,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         clearInterval(cel);
                     });
                 }
-                if (newType == "triangle") {
+                if (newType == "t") {
                     newFruit.rigidBody.setAngvel(10, true);
                     newFruit.rigidBody.setAngularDamping(.7);
 
@@ -1079,8 +1079,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let body
         if (TYPE_MAP[type].type === "circle") {
             body = addCircle(x, y, TYPE_MAP[type].radius);
-        } else if (TYPE_MAP[type].type === "triangle") {
-            body = addTriangle(x, y, TYPE_MAP[type].radius);
+        } else if (TYPE_MAP[type].type === "t") {
+            body = addt(x, y, TYPE_MAP[type].radius);
 
         }
         body.rigidBodyDesc.setCanSleep(false);
