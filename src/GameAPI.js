@@ -108,10 +108,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const NEW_DAMPENING_TIME = .3;
     const DAMP_AMOUNT = 250;
     const DEFAULT_DAMP = .8;
+    const DEFAULT_ANGULAR_DAMP = 20;
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
-    const FLOOR_FRICTION = .9;
+    const FLOOR_FRICTION = .3;
     this.loadExtraOptions = (options) => {
         extraOptions = options;
     }
@@ -219,7 +220,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             // if (body.accelLimited) {
             //     ctx.fillStyle = "black";
             // }
-
+            // if (body.impactedByNew) {
+            //     ctx.fillStyle = "pink";
+            // }
+            //If body is sleeping
+            
             switch (body.type) {
                 case "text":
                     ctx.font = "30px Arial";
@@ -242,6 +247,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     if (body.render.hasStroke) {
                         ctx.stroke();
                     }
+                    
                     break;
                 case "t":
                     ctx.translate(position.x, position.y);
@@ -359,13 +365,20 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         });
 
         FRUITS = BODIES.filter(body => body.fruitType);
+        window.FRUITS = FRUITS;
         FRUITS.forEach(body => {
             //Ensure balls don't go offscreen
             const yPosition = body.rigidBody.translation().y;
+            const radius = body.colliderDesc.shape.radius;
             if (yPosition * RAPIER_MULTIPLIER > SCREEN_HEIGHT + 100) {
                 //Teleport body to center of screen
                 body.rigidBody.setTranslation({ x: SCREEN_WIDTH / RAPIER_MULTIPLIER / 2, y: SCREEN_HEIGHT / RAPIER_MULTIPLIER / 2 });
                 body.rigidBody.setLinvel({ x: 0, y: 0 }, true);
+            }
+
+            if(yPosition+radius+10>SCREEN_HEIGHT){
+                //Move body up by 1 tick
+                body.rigidBody.setTranslation({ x: body.rigidBody.translation().x, y: 0 });
             }
 
             if (body.hitYet) {
@@ -397,42 +410,44 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     body.velocityCapped = false;
                 }
             }
-            if (body.impactedByNew) {
-                if(!body.overrideDamping){
-                //Lower bouncieness
-                body.collider.setRestitution(0);
-                body.rigidBody.setLinearDamping(DEFAULT_DAMP*1.2);
-                //If body is moving up, dampen it more
-                const velocity = body.rigidBody.linvel();
-                if (velocity.y < 0) {
-                    body.rigidBody.setLinearDamping(DAMP_AMOUNT * .2 * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
-                }
+            if(!body.overrideDamping){
 
-
-
-                //Cap acceleration
-                if (body.lastVelocity) {
-                    let velocityDiff = {
-                        x: Math.abs(body.lastVelocity.x - velocity.x),
-                        y: Math.abs(body.lastVelocity.y - velocity.y)
+                if (body.impactedByNew) {
+                    //Lower bouncieness
+                    body.collider.setRestitution(0);
+                    body.rigidBody.setLinearDamping(DEFAULT_DAMP*1.2);
+                    //If body is moving up, dampen it more
+                    const velocity = body.rigidBody.linvel();
+                    if (velocity.y < 0) {
+                        body.rigidBody.setLinearDamping(DAMP_AMOUNT * .2 * VERTICAL_EXPLODE_DAMP_MULTIPLIER);
                     }
-                    let difMag = Math.sqrt(Math.pow(velocityDiff.x, 2) + Math.pow(velocityDiff.y, 2));
-                    if (difMag > 1) {
-                        body.accelLimited = true;
-                        body.rigidBody.setLinearDamping(DAMP_AMOUNT);
-                        let callback = () => {
-                            if (body.merged) return;
-                            body.accelLimited = false;
-                            body.rigidBody.setLinearDamping(0);
+
+
+
+                    //Cap acceleration
+                    if (body.lastVelocity) {
+                        let velocityDiff = {
+                            x: Math.abs(body.lastVelocity.x - velocity.x),
+                            y: Math.abs(body.lastVelocity.y - velocity.y)
                         }
-                        scheduledEvent(NEW_DAMPENING_TIME * TICKS_PER_SECOND, callback, [body]);
+                        let difMag = Math.sqrt(Math.pow(velocityDiff.x, 2) + Math.pow(velocityDiff.y, 2));
+                        if (difMag > 1) {
+                            body.accelLimited = true;
+                            body.rigidBody.setLinearDamping(DAMP_AMOUNT);
+                            let callback = () => {
+                                if (body.merged) return;
+                                body.accelLimited = false;
+                                body.rigidBody.setLinearDamping(DEFAULT_DAMP);
+                            }
+                            scheduledEvent(NEW_DAMPENING_TIME * TICKS_PER_SECOND, callback, [body]);
+                        }
                     }
+                    body.lastVelocity = velocity;
+                } else {
+                    body.rigidBody.setLinearDamping(DEFAULT_DAMP);
+                    body.rigidBody.setAngularDamping(DEFAULT_ANGULAR_DAMP)
+                    body.collider.setRestitution(BALL_RESTITUTION);
                 }
-                body.lastVelocity = velocity;
-            }
-            } else {
-                body.rigidBody.setLinearDamping(DEFAULT_DAMP);
-                body.collider.setRestitution(BALL_RESTITUTION);
             }
         });
 
@@ -756,7 +771,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         tColliderDesc.setMass(radius * RAPIER_MULTIPLIER);
         tColliderDesc.shape.radius = radius * .5;
         //Damp ts cuz they damn bouncy
-        tRigidBody.setLinearDamping(DAMP_AMOUNT);
+        trigidBody.setLinearDamping(DAMP_AMOUNT);
 
         let collider = world.createCollider(tColliderDesc, tRigidBody);
         collider.setRestitution(0);
@@ -781,7 +796,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         ballColliderDesc.setFriction(.2);
         ballColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
 
-        ballColliderDesc.setMass(Math.log2(radius)+10);
+        ballColliderDesc.setMass(Math.log(radius)/Math.log(1.1)+10);
         let collider = world.createCollider(ballColliderDesc, ballRigidBody);
         let addition = {
             id: Math.random(),
@@ -950,14 +965,26 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             newFruit.impactedByNew = CALM_NEW_FRUIT && true;
             newFruit.rigidBody.setRotation(averageRotation);
 
+            //Implement conservation of momentum
+            let momentum = {
+                x: bodyA.rigidBody.linvel().x * bodyA.rigidBody.mass() + bodyB.rigidBody.linvel().x * bodyB.rigidBody.mass(),
+                y: bodyA.rigidBody.linvel().y * bodyA.rigidBody.mass() + bodyB.rigidBody.linvel().y * bodyB.rigidBody.mass()
+            }
+            console.log(momentum, "momentum");
+            let newMass = newFruit.rigidBody.mass();
+            console.log("mass",newMass);
+            console.log({ x: momentum.x / newMass, y: momentum.y / newMass });
+            newFruit.rigidBody.setLinvel({ x: momentum.x / newMass, y: momentum.y / newMass }, true);
+            
+
             let radius = newFruit.colliderDesc.shape.radius*RAPIER_MULTIPLIER;
             let inWall = averageX+radius>SCREEN_WIDTH || averageX-radius<0 || averageY+radius>SCREEN_HEIGHT
 
             if(inWall){
                 console.log("all wall, extra dampening");
                 newFruit.overrideDamping = true;
-                newFruit.rigidBody.setAngularDamping(300);
                 newFruit.rigidBody.setLinearDamping(300);
+                newFruit.rigidBody.setAngularDamping(300);
             }
 
             //As any good biologist knows, being sad is a dominant trait
@@ -966,6 +993,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             }
             //If it doesnt impact others, remove the flag. Note that we leave it for a second so it can spread
             scheduledEvent((inWall?2:(newFruit.othersImpacted > 1 ? 1 : .1)) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
+                if(inWall){
+                    newFruit.overrideDamping=false;
+                }
                 newFruit.impactedByNew = false;
             }, [newFruit]);
 
@@ -992,7 +1022,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 }
                 if (newType == "t") {
                     newFruit.rigidBody.setAngvel(10, true);
-                    newFruit.rigidBodyDesc.setAngularDamping(.7);
+                    newFruit.rigidBody.setAngularDamping(.7);
 
                     expandingCircle(averageX, averageY, "black");
                     //Update collision filtering so bodies only collide with others of the same type
@@ -1102,10 +1132,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             body = addt(x, y, TYPE_MAP[type].radius);
 
         }
-        body.rigidBodyDesc.setCanSleep(false);
+        // body.rigidBodyDesc.setCanSleep(false);
         body.collider.setCollisionGroups(generateFilter([1], [1]));
         body.collider.setSolverGroups(generateFilter([1], [1]));
-        body.rigidBodyDesc.setAngularDamping(20);
+        body.rigidBody.setLinearDamping(DEFAULT_ANGULAR_DAMP);
         
         console.log("damping more");
         //Add any other options
