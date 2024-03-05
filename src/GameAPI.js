@@ -1111,6 +1111,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         body.hasFace = true;
         if (Math.random() * 1000 == 1) {
             body.isSad = true;
+        } else {
+            body.isSad = false;
         }
 
         //Get all balls touching newFruit
@@ -1141,6 +1143,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         }
         );
         state.fruits.forEach(function (fruit) {
+            console.log(fruit);
             if (fruit.sad == undefined) {
                 //We are looking at an old save
                 localStorage.clear();
@@ -1173,6 +1176,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     sad: body.isSad
                 });
             });
+        console.log("simplie fruits", simplifiedFruits);
         return {
             fruits: simplifiedFruits,
             currentType: CURRENT_TYPE,
