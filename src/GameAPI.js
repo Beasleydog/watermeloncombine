@@ -111,7 +111,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
-
+    const FLOOR_FRICTION = .9;
     this.loadExtraOptions = (options) => {
         extraOptions = options;
     }
@@ -742,7 +742,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let tRigidBody = world.createRigidBody(tBodyDesc);
 
         tColliderDesc.setRestitution(BALL_RESTITUTION);
-        tColliderDesc.setFriction(1);
+        tColliderDesc.setFriction(FLOOR_FRICTION);
         tColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
         tColliderDesc.setMass(radius * RAPIER_MULTIPLIER);
         tColliderDesc.shape.radius = radius * .5;
@@ -791,7 +791,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let wallColliderDesc = RAPIER.ColliderDesc.cuboid(width / RAPIER_MULTIPLIER, height / RAPIER_MULTIPLIER);
         let wallBodyDesc = RAPIER.RigidBodyDesc.fixed().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
         let wallRigidBody = world.createRigidBody(wallBodyDesc);
-        wallColliderDesc.setFriction(1);
+        wallColliderDesc.setFriction(FLOOR_FRICTION);
         let collider = world.createCollider(wallColliderDesc, wallRigidBody);
         collider.setCollisionGroups(generateFilter([1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]));
         collider.setSolverGroups(generateFilter([1], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]));
@@ -1096,7 +1096,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         body.rigidBodyDesc.setCanSleep(false);
         body.collider.setCollisionGroups(generateFilter([1], [1]));
         body.collider.setSolverGroups(generateFilter([1], [1]));
-        body.rigidBodyDesc.setAngularDamping(100);
+        body.rigidBodyDesc.setAngularDamping(20);
         
         console.log("damping more");
         //Add any other options
