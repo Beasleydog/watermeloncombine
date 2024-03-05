@@ -107,8 +107,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const MAX_FRUIT_VELOCITY = 5;
     const NEW_DAMPENING_TIME = .3;
     const DAMP_AMOUNT = 250;
-    const DEFAULT_DAMP = .8;
-    const DEFAULT_ANGULAR_DAMP = 20;
+    const DEFAULT_DAMP = .6;
+    const DEFAULT_ANGULAR_DAMP = 3;
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
