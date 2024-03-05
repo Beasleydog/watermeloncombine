@@ -369,6 +369,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             }
 
             if (body.hitYet) {
+                //EXtra damp vertical velocity
+                if(!body.overrideDamping){
+                    const yVelocity = body.rigidBody.linvel().y;
+                    const xVelocity = body.rigidBody.linvel().x;
+                    if (yVelocity < 0) {
+                        //Set velocity to .9 times yVelocity
+                        body.rigidBody.setLinvel({ x: xVelocity, y: yVelocity * .8 }, true);
+                    }
+                }
                 //Cap velocity
                 const velocity = body.rigidBody.linvel();
                 const speed = Math.sqrt(Math.pow(velocity.x, 2) + Math.pow(velocity.y, 2));
