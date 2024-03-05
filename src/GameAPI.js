@@ -82,7 +82,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     //Test
     const SCREEN_WIDTH = 1366;
     const SCREEN_HEIGHT = 777;
-    const DEFAULT_DROP_HEIGHT = 30;
+    const DEFAULT_DROP_HEIGHT = 40;
     let DROP_HEIGHT = DEFAULT_DROP_HEIGHT;
     let DROP_MIN_INTERVAL = .500 * TICKS_PER_SECOND;
     let MOUSE_X = SCREEN_WIDTH / 2;
@@ -107,6 +107,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const MAX_FRUIT_VELOCITY = 5;
     const NEW_DAMPENING_TIME = .3;
     const DAMP_AMOUNT = 250;
+    const DEFAULT_DAMP = .8;
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
@@ -388,9 +389,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 }
             }
             if (body.impactedByNew) {
+                if(!body.overrideDamping){
                 //Lower bouncieness
                 body.collider.setRestitution(0);
-                body.rigidBody.setLinearDamping(DAMP_AMOUNT * .1);
+                body.rigidBody.setLinearDamping(DEFAULT_DAMP*1.2);
                 //If body is moving up, dampen it more
                 const velocity = body.rigidBody.linvel();
                 if (velocity.y < 0) {
@@ -418,8 +420,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     }
                 }
                 body.lastVelocity = velocity;
+            }
             } else {
-                body.rigidBody.setLinearDamping(0);
+                body.rigidBody.setLinearDamping(DEFAULT_DAMP);
                 body.collider.setRestitution(BALL_RESTITUTION);
             }
         });
@@ -766,10 +769,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         let ballRigidBody = world.createRigidBody(ballBodyDesc);
 
         ballColliderDesc.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
-        ballColliderDesc.setFriction(.5);
+        ballColliderDesc.setFriction(.2);
         ballColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
 
-        ballColliderDesc.setMass(radius)
+        ballColliderDesc.setMass(Math.log2(radius)+10);
         let collider = world.createCollider(ballColliderDesc, ballRigidBody);
         let addition = {
             id: Math.random(),
@@ -938,12 +941,22 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             newFruit.impactedByNew = CALM_NEW_FRUIT && true;
             newFruit.rigidBody.setRotation(averageRotation);
 
+            let radius = newFruit.colliderDesc.shape.radius*RAPIER_MULTIPLIER;
+            let inWall = averageX+radius>SCREEN_WIDTH || averageX-radius<0 || averageY+radius>SCREEN_HEIGHT
+
+            if(inWall){
+                console.log("all wall, extra dampening");
+                newFruit.overrideDamping = true;
+                newFruit.rigidBody.setAngularDamping(300);
+                newFruit.rigidBody.setLinearDamping(300);
+            }
+
             //As any good biologist knows, being sad is a dominant trait
             if (bodyA.isSad || bodyB.isSad) {
                 newFruit.isSad = true;
             }
             //If it doesnt impact others, remove the flag. Note that we leave it for a second so it can spread
-            scheduledEvent((newFruit.othersImpacted > 1 ? 1 : .1) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
+            scheduledEvent((inWall?2:(newFruit.othersImpacted > 1 ? 1 : .1)) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
                 newFruit.impactedByNew = false;
             }, [newFruit]);
 
@@ -962,15 +975,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         let rx = Math.random() * window.innerWidth;
                         let ry = Math.random() * window.innerHeight;
                         confetti(rx, ry, "r")
-                    }, 80);
+                    }, 150);
 
-                    scheduledEvent(5 * TICKS_PER_SECOND, () => {
+                    scheduledEvent(3 * TICKS_PER_SECOND, () => {
                         clearInterval(cel);
                     });
                 }
                 if (newType == "t") {
                     newFruit.rigidBody.setAngvel(10, true);
-                    newFruit.rigidBody.setAngularDamping(.7);
+                    newFruit.rigidBodyDesc.setAngularDamping(.7);
 
                     expandingCircle(averageX, averageY, "black");
                     //Update collision filtering so bodies only collide with others of the same type
@@ -1083,6 +1096,9 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         body.rigidBodyDesc.setCanSleep(false);
         body.collider.setCollisionGroups(generateFilter([1], [1]));
         body.collider.setSolverGroups(generateFilter([1], [1]));
+        body.rigidBodyDesc.setAngularDamping(100);
+        
+        console.log("damping more");
         //Add any other options
         if (options) {
             if (options.forceRadius) {
