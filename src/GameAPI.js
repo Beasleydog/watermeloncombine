@@ -988,7 +988,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     });
                 }
                 textPopup(averageX, averageY, `+${scoreaddition}`);
-                //confetti(averageX, averageY, newType);
+                confetti(averageX, averageY, newType);
             }
         }
     }
