@@ -618,7 +618,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             fruit.collider.setSolverGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
         });
 
-        console.log("merge effect called");
         CAN_DIE = false;
         CALM_NEW_FRUIT = false;
 
@@ -650,7 +649,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             CALM_NEW_FRUIT = true;
         }
         let merge = () => {
-            console.log("merge called");
             //Kill all velocities
             BODIES.forEach((body) => {
                 if (body.rigidBody) {
@@ -944,7 +942,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             if (bodyA.isSad || bodyB.isSad) {
                 newFruit.isSad = true;
             }
-            console.log("just added a new one, it impacted others: ", newFruit.othersImpacted);
             //If it doesnt impact others, remove the flag. Note that we leave it for a second so it can spread
             scheduledEvent((newFruit.othersImpacted > 1 ? 1 : .1) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
                 newFruit.impactedByNew = false;
@@ -1143,7 +1140,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         }
         );
         state.fruits.forEach(function (fruit) {
-            console.log(fruit);
             if (fruit.sad == undefined) {
                 //We are looking at an old save
                 localStorage.clear();
@@ -1176,7 +1172,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     sad: body.isSad
                 });
             });
-        console.log("simplie fruits", simplifiedFruits);
         return {
             fruits: simplifiedFruits,
             currentType: CURRENT_TYPE,
