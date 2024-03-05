@@ -1,5 +1,4 @@
 import CombineGame from './GameAPI.js';
-
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
         console.log("close ball")

@@ -1143,7 +1143,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             if (fruit.sad == undefined) {
                 //We are looking at an old save
                 localStorage.clear();
-                window.location.reload();
+
+                scheduledEvent(1*TICKS_PER_SECOND,()=>{
+
+                    window.location.reload();
+                });
             }
             let addedFruit = addFruit(fruit.fruitType, fruit.position.x * RAPIER_MULTIPLIER, fruit.position.y * RAPIER_MULTIPLIER, {
                 velocity: fruit.velocity
