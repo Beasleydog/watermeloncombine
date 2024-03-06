@@ -965,20 +965,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             newFruit.impactedByNew = CALM_NEW_FRUIT && true;
             newFruit.rigidBody.setRotation(averageRotation);
 
-            // //Implement conservation of momentum
-            // let momentum = {
-            //     x: bodyA.rigidBody.linvel().x * bodyA.rigidBody.mass() + bodyB.rigidBody.linvel().x * bodyB.rigidBody.mass(),
-            //     y: bodyA.rigidBody.linvel().y * bodyA.rigidBody.mass() + bodyB.rigidBody.linvel().y * bodyB.rigidBody.mass()
-            // }
-            // console.log(momentum, "momentum");
-            // let newMass = newFruit.rigidBody.mass();
-            // console.log("mass",newMass);
-            // console.log({ x: momentum.x / newMass, y: momentum.y / newMass });
-            // newFruit.rigidBody.setLinvel({ x: momentum.x / newMass, y: momentum.y / newMass }, true);
-            
-
             let radius = newFruit.colliderDesc.shape.radius*RAPIER_MULTIPLIER;
-            let inWall = averageX+radius>SCREEN_WIDTH || averageX-radius<0 || averageY+radius>SCREEN_HEIGHT
+            let inWall = averageY+radius>SCREEN_HEIGHT
 
             if(inWall){
                 console.log("all wall, extra dampening");
