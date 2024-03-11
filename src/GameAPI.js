@@ -797,6 +797,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         ballColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
 
         ballColliderDesc.setMass(Math.log(radius)/Math.log(1.1)+10);
+
         let collider = world.createCollider(ballColliderDesc, ballRigidBody);
         let addition = {
             id: Math.random(),
@@ -1120,6 +1121,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             body = addt(x, y, TYPE_MAP[type].radius);
 
         }
+
+        if(type==0){
+            body.colliderDesc.setMass(18);
+        }
+
         // body.rigidBodyDesc.setCanSleep(false);
         body.collider.setCollisionGroups(generateFilter([1], [1]));
         body.collider.setSolverGroups(generateFilter([1], [1]));
