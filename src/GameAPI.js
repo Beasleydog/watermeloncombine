@@ -720,6 +720,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             { time: 5000, strength: 20 }
         ]
 
+
         screenShake(2500, 2);
 
         times.forEach((time, i) => {
