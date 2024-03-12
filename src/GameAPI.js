@@ -6,6 +6,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const clearInterval = window.clearInterval;
 
     //Define some constants(ish)
+    const im = new Image();
+    im.src = "./d.png";
     const TYPE_MAP = {
         red: {
             fillStyle: "#FF0000",
@@ -74,8 +76,15 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             lineWidth: 10,
             radius: 80,
             type: "t",
+        },
+        d: {
+            fillStyle: "#FFFFFF",
+            img: im,
+            radius: 150,
+            type: "circle"
         }
     };
+
     const TICKS_PER_SECOND = 60;
     let CURRENT_TICK = 0;
     //Test
@@ -111,6 +120,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     const VERTICAL_EXPLODE_DAMP_MULTIPLIER = .5;
     let SCHEDULED_EVENTS = [];
     let ALL_COLLISIONS = [];
+    let RENDER_OFFSET = {
+        x: 0,
+        y: 0
+    }
     const FLOOR_FRICTION = .3;
     this.loadExtraOptions = (options) => {
         extraOptions = options;
@@ -153,6 +166,8 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
     const renderFunction = () => {
         ctx.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        ctx.save();
+        ctx.translate(RENDER_OFFSET.x, RENDER_OFFSET.y);
 
         //Draw sensor bar
         ctx.save();
@@ -165,6 +180,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         drawBodiesToCanvas(firstBodies);
         drawBodiesToCanvas(laterBodies);
+        ctx.restore();
     }
     function applyBodyStylesToCanvas(body) {
         const RAINBOW_COLOR = `hsl(${(CURRENT_TICK) % 360}, 100%, 50%)`;
@@ -223,7 +239,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             //     ctx.fillStyle = "pink";
             // }
             //If body is sleeping
-            
+
             switch (body.type) {
                 case "text":
                     ctx.font = "30px Arial";
@@ -234,7 +250,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     );
                     break;
                 case "circle":
-                    const radius = body.circleRadius || body.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
+                    let radius = body.circleRadius || body.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
                     ctx.arc(
                         position.x,
                         position.y,
@@ -246,7 +262,17 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     if (body.render.hasStroke) {
                         ctx.stroke();
                     }
-                    
+                    if (body.render.img) {
+                        ctx.translate(position.x, position.y);
+                        ctx.rotate(body.rigidBody.rotation());
+                        let mult = 1.35;
+                        radius *= mult;
+                        ctx.drawImage(body.render.img, -radius + 10, -radius, radius * 2, radius * 2);
+                        ctx.rotate(-body.rigidBody.rotation());
+                        ctx.translate(-position.x, -position.y);
+
+                    }
+
                     break;
                 case "t":
                     ctx.translate(position.x, position.y);
@@ -353,8 +379,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     this.tick = () => {
 
         CURRENT_TICK++;
-        // console.log("----");
-        // console.log(SCHEDULED_EVENTS);
         SCHEDULED_EVENTS.forEach((event) => {
             event.ticks--;
             if (event.ticks <= 0) {
@@ -375,14 +399,14 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 body.rigidBody.setLinvel({ x: 0, y: 0 }, true);
             }
 
-            if(yPosition+radius+10>SCREEN_HEIGHT){
+            if (yPosition + radius + 10 > SCREEN_HEIGHT) {
                 //Move body up by 1 tick
                 body.rigidBody.setTranslation({ x: body.rigidBody.translation().x, y: 0 });
             }
 
             if (body.hitYet) {
                 //EXtra damp vertical velocity
-                if(!body.overrideDamping){
+                if (!body.overrideDamping) {
                     const yVelocity = body.rigidBody.linvel().y;
                     const xVelocity = body.rigidBody.linvel().x;
                     if (yVelocity < 0) {
@@ -409,12 +433,12 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     body.velocityCapped = false;
                 }
             }
-            if(!body.overrideDamping){
+            if (!body.overrideDamping) {
 
                 if (body.impactedByNew) {
                     //Lower bouncieness
                     body.collider.setRestitution(0);
-                    body.rigidBody.setLinearDamping(DEFAULT_DAMP*1.2);
+                    body.rigidBody.setLinearDamping(DEFAULT_DAMP * 1.2);
                     //If body is moving up, dampen it more
                     const velocity = body.rigidBody.linvel();
                     if (velocity.y < 0) {
@@ -458,7 +482,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         eventQueue.drainCollisionEvents((handle1, handle2, started) => {
             //Get body from handle
             ALL_COLLISIONS.push([handle1, handle2, started]);
-
             let bodyA, bodyB;
             BODIES.filter((body) => {
                 if (body.rigidBody) {
@@ -469,6 +492,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                     }
                 }
             });
+
+            bodyA?.onCollide?.();
+            bodyB?.onCollide?.();
+
             handleCollision(bodyA, bodyB, started);
         });
 
@@ -633,6 +660,165 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         const filterString = "0x" + memberFilter + filterFilter;
         return filterString;
     }
+    async function handleTMerge(bodyA, bodyB) {
+
+        if (!CAN_DIE) {
+            //T animatino is happening, gotta wait
+            await new Promise((resolve) => {
+                let t = setInterval(() => {
+                    if (CAN_DIE) {
+                        clearInterval(t);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+        CAN_DIE = false;
+        scheduledEvent(40 * TICKS_PER_SECOND, () => {
+            //Backup just incase
+            CAN_DIE = true;
+        });
+        let both = [bodyA, bodyB];
+
+        both.forEach((b, i) => {
+            b.overrideDamping = true;
+            b.rigidBody.setLinearDamping(0);
+            b.rigidBody.setAngularDamping(0);
+
+            b.rigidBody.setLinvel({ x: 0, y: 0 }, true);
+            b.collider.setCollisionGroups(generateFilter([bodyB.fruitTypeNumber + i], [bodyB.fruitTypeNumber + i]));
+            b.rigidBody.setGravityScale(0);
+            if (i == 0) {
+                let position1 = both[0].rigidBody.translation();
+                let position2 = both[1].rigidBody.translation();
+
+                let distance = Math.sqrt(Math.pow(position2.x - position1.x, 2) + Math.pow(position2.y - position1.y, 2));
+                var speed = .03 * distance * both[0].rigidBody.mass();
+
+                let angle = Math.atan2(position2.y - position1.y, position2.x - position1.x);
+                let xComp = Math.cos(angle) * speed;
+                let yComp = Math.sin(angle) * speed;
+
+                var force = {
+                    x: xComp,
+                    y: yComp
+                }
+
+                both[0].rigidBody.addForce(force, true);
+            }
+        });
+        let speedUpLoop = setInterval(() => {
+            bodyA.rigidBody.addTorque(.1 * 1, true);
+            bodyB.rigidBody.addTorque(.1 * -1, true);
+
+        }, 1);
+        const endTime = 7000;
+
+        const times = [
+            { time: 2500, strength: 5 },
+            { time: 3700, strength: 10 },
+            { time: 5000, strength: 20 }
+        ]
+
+        screenShake(2500, 2);
+
+        times.forEach((time, i) => {
+            setTimeout(() => {
+                screenShake((times[i + 1]?.time || endTime) - time.time, time.strength);
+            }, time.time);
+        });
+
+        setTimeout(() => {
+            clearInterval(speedUpLoop);
+            confetti(both[0].rigidBody.translation().x * RAPIER_MULTIPLIER, both[0].rigidBody.translation().y * RAPIER_MULTIPLIER, both[0].fruitType, 15);
+            confetti(both[1].rigidBody.translation().x * RAPIER_MULTIPLIER, both[1].rigidBody.translation().y * RAPIER_MULTIPLIER, both[1].fruitType, 15);
+            tMergePartTwo(bodyA.rigidBody.translation().x * RAPIER_MULTIPLIER, bodyA.rigidBody.translation().y * RAPIER_MULTIPLIER);
+            screenShake(100, 50);
+            expandingCircle(bodyA.rigidBody.translation().x * RAPIER_MULTIPLIER, bodyA.rigidBody.translation().y * RAPIER_MULTIPLIER, "rgba(0,0,0,0.77)");
+            removeBody(bodyA);
+            removeBody(bodyB);
+        }, endTime);
+
+    }
+    function tMergePartTwo(x, y) {
+        let b = addCircle(x, y, 10);
+        b.render = {
+            fillStyle: "black",
+            effect: "pulse",
+        }
+        b.collider.setCollisionGroups(generateFilter([1], [1]));
+        b.rigidBody.setDominanceGroup(10);
+        scheduledEvent(6 * TICKS_PER_SECOND, () => {
+            console.log("CALLBACK!");
+            b.rigidBody.setLinvel({ x: 0, y: .5 }, true);
+            b.rigidBody.setGravityScale(-.15);
+            scheduledEvent(5 * TICKS_PER_SECOND, () => {
+                removeBody(b);
+                tMergePartThree(x);
+            })
+        });
+    }
+    function tMergePartThree(x) {
+        const endTime = 5000;
+
+        const times = [
+            { time: 1000, strength: 5 },
+            { time: 2000, strength: 10 },
+            { time: 3000, strength: 20 },
+            { time: 4000, strength: 30 }
+        ]
+
+        screenShake(2500, 2);
+
+        times.forEach((time, i) => {
+            setTimeout(() => {
+                screenShake((times[i + 1]?.time || endTime) - time.time, time.strength);
+            }, time.time);
+        });
+
+        setTimeout(() => {
+            let newFruit = addFruit("d", x, -TYPE_MAP["d"].radius);
+            newFruit.rigidBody.setLinvel({ x: 0, y: 80 }, true);
+            newFruit.rigidBody.setAngvel(10, true);
+            newFruit.collider.setRestitution(.5);
+            newFruit.hasFace = false;
+            let stopShake = screenShake(100000, 50);
+
+            newFruit.onCollide = () => {
+                newFruit.onCollide = () => { };
+                CAN_DIE = true;
+                stopShake();
+
+                confetti(newFruit.rigidBody.translation().x * RAPIER_MULTIPLIER, newFruit.rigidBody.translation().y * RAPIER_MULTIPLIER, newFruit.fruitType, 15, 8);
+
+                //Give all bodies a force away from newFruit
+                FRUITS.forEach((fruit) => {
+                    if (fruit.id == newFruit.id) return;
+
+                    let position = fruit.rigidBody.translation();
+                    let xDistance = position.x - newFruit.rigidBody.translation().x;
+                    let maxDistance = x > position.x ? x : SCREEN_WIDTH - x;
+                    console.log(1 - Math.abs(xDistance / maxDistance));
+                    let speed = (1 - Math.abs(xDistance / maxDistance)) * Math.sign(xDistance) * 500;
+                    fruit.rigidBody.applyImpulse({ x: speed, y: 0 }, true);
+                });
+            }
+        }, endTime);
+    }
+    window.test = tMergePartThree;
+    function screenShake(length, strength) {
+        //Shake using RENDER_OFFSET
+        let shakeLoop = setInterval(() => {
+            RENDER_OFFSET.x = (Math.random() - .5) * strength;
+            RENDER_OFFSET.y = (Math.random() - .5) * strength;
+        }, 10);
+        const stop = () => {
+            clearInterval(shakeLoop);
+            RENDER_OFFSET = { x: 0, y: 0 };
+        }
+        setTimeout(stop, length || 500);
+        return stop;
+    }
     function mergeAllFruitsEffect(depth) {
         if (!depth) depth = 0;
         var num = -1;
@@ -640,6 +826,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         //Update collision filtering so bodies only collide with others of the same type
         FRUITS.forEach((fruit) => {
+            if (fruit.fruitType == "t") return;
             fruit.collider.setCollisionGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
             fruit.collider.setSolverGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
         });
@@ -753,7 +940,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     }
     this.mergeAllFruitsEffect = mergeAllFruitsEffect;
     function addt(x, y, radius) {
-        console.log("Adding t");
         //Add points to array. Points make equilateral t of furthest length radius
         radius /= RAPIER_MULTIPLIER;
         const points = new Float32Array([
@@ -762,9 +948,10 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             -radius * Math.sqrt(3) / 2, radius / 2
         ])
         let tColliderDesc = RAPIER.ColliderDesc.convexHull(points);
-        let tBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER);
+        let tBodyDesc = RAPIER.RigidBodyDesc.dynamic().setTranslation(x / RAPIER_MULTIPLIER, y / RAPIER_MULTIPLIER).setCcdEnabled(true);
         let tRigidBody = world.createRigidBody(tBodyDesc);
 
+        tColliderDesc.setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS);
         tColliderDesc.setRestitution(BALL_RESTITUTION);
         tColliderDesc.setFriction(FLOOR_FRICTION);
         tColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
@@ -783,8 +970,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             colliderDesc: tColliderDesc,
             collider: collider,
             rigidBodyDesc: tBodyDesc,
-            hasFace:true,
-            render:{}
+            render: {}
         }
         setFruitStyle(addition, "t");
         BODIES.push(addition);
@@ -799,7 +985,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         ballColliderDesc.setFriction(.2);
         ballColliderDesc.setFrictionCombineRule(RAPIER.CoefficientCombineRule.Max);
 
-        ballColliderDesc.setMass(Math.log(radius)/Math.log(1.1)+10);
+        ballColliderDesc.setMass(Math.log(radius) / Math.log(1.1) + 10);
 
         let collider = world.createCollider(ballColliderDesc, ballRigidBody);
         let addition = {
@@ -843,29 +1029,45 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         FRUITS = FRUITS.filter((b) => b.id != body.id);
         clearEventsForBody(body);
     }
-    function confetti(x, y, type) {
+    function confetti(x, y, type, speedMod, radiusMod) {
         //Spawn confetti at points x,y. Match the style of the type
         if (!canvas) return;
-        const color = TYPE_MAP[type].fillStyle;
         let r = TYPE_MAP[type].radius;
 
         for (let i = 0; i < 15; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * 2 + 1;
-            const confetti = addCircle(x + Math.cos(angle) * r, y + Math.sin(angle) * r, 5);
+            const speed = Math.random() * (speedMod || 4) + 1;
+            let radius;
+            let confetti;
+            if (type === "t") {
+                radius = 15;
+                confetti = addt(x, y, radius);
 
+                confetti.rigidBody.setLinearDamping(0.1);
+                confetti.rigidBody.setAngularDamping(0.1);
+                confetti.overrideDamping = true;
+            } else {
+                radius = 5 * (radiusMod || 1);
+                confetti = addCircle(x + Math.cos(angle) * r, y + Math.sin(angle) * r, radius);
+            }
             //Make the confetti rigibdoy KinematicVelocityBased
 
 
-            confetti.render = {
-                fillStyle: color,
-            }
+            // confetti.render = {
+            //     fillStyle: color,
+            //     strokeStyle: strokeStyle,
+            // }
+
+            setFruitStyle(confetti, type);
+            confetti.circleRadius = radius;
 
             confetti.rigidBody.setLinvel({ x: Math.cos(angle) * speed, y: Math.sin(angle) * speed }, true);
-
+            confetti.rigidBody.setAngvel((Math.random() - .5) * 20, true);
             //Set collision groups
-            confetti.collider.setCollisionGroups(generateFilter([15], [15]));
-            confetti.collider.setSolverGroups(generateFilter([15], [15]));
+            // confetti.collider.setCollisionGroups(generateFilter([15], [15]));
+            // confetti.collider.setSolverGroups(generateFilter([15], [15]));
+
+            confetti.collider.setSensor(true);
 
             scheduledEvent((2 + Math.random() * 1) * TICKS_PER_SECOND, () => {
                 removeBody(confetti);
@@ -917,7 +1119,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             circle.circleRadius += growVelocity;
             growVelocity += growAcceleration;
             circle.render.opacity = growVelocity / initialVelocity + .0001;
-        }, 1);
+        }, 10);
     }
 
     function handleCollision(bodyA, bodyB, started) {
@@ -948,9 +1150,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             const averageY = (aPosition.y + bPosition.y) / 2 * RAPIER_MULTIPLIER;
 
             const averageRotation = (bodyA.rigidBody.rotation() + bodyB.rigidBody.rotation()) / 2;
-
             const newType = nextType(bodyA.fruitType);
-            console.log(newType);
             const scoreaddition = Math.pow(
                 Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
                 2
@@ -964,74 +1164,76 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 score: SCORE,
             });
 
-            let newFruit = addFruit(newType, averageX + 1, averageY);
-            newFruit.impactedByNew = CALM_NEW_FRUIT && true;
-            newFruit.rigidBody.setRotation(averageRotation);
-console.log("new",newFruit);
-            let radius;
-            let inWall;
-            try{
-                radius = newFruit.colliderDesc.shape.radius*RAPIER_MULTIPLIER;
-                inWall = averageY+radius>SCREEN_HEIGHT
+            if (newType != "d") {
+                let newFruit = addFruit(newType, averageX + 1, averageY);
+                newFruit.impactedByNew = CALM_NEW_FRUIT && true;
+                newFruit.rigidBody.setRotation(averageRotation);
+                let radius;
+                let inWall;
+                try {
+                    radius = newFruit.colliderDesc.shape.radius * RAPIER_MULTIPLIER;
+                    inWall = averageY + radius > SCREEN_HEIGHT
 
-                if(inWall){
-                    console.log("all wall, extra dampening");
-                    newFruit.overrideDamping = true;
-                    newFruit.rigidBody.setLinearDamping(300);
-                    newFruit.rigidBody.setAngularDamping(300);
+                    if (inWall) {
+                        newFruit.overrideDamping = true;
+                        newFruit.rigidBody.setLinearDamping(300);
+                        newFruit.rigidBody.setAngularDamping(300);
+                    }
+                } catch (e) { console.log(e) }
+                //As any good biologist knows, being sad is a dominant trait
+                if (bodyA.isSad || bodyB.isSad) {
+                    newFruit.isSad = true;
                 }
-            }catch(e){console.log(e)}
-            //As any good biologist knows, being sad is a dominant trait
-            if (bodyA.isSad || bodyB.isSad) {
-                newFruit.isSad = true;
-            }
-            //If it doesnt impact others, remove the flag. Note that we leave it for a second so it can spread
-            scheduledEvent((inWall?2:(newFruit.othersImpacted > 1 ? 1 : .1)) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
-                if(inWall){
-                    newFruit.overrideDamping=false;
+                //If it doesnt impact others, remove the flag. Note that we leave it for a second so it can spread
+                scheduledEvent((inWall ? 2 : (newFruit.othersImpacted > 1 ? 1 : .1)) * NEW_DAMPENING_TIME * TICKS_PER_SECOND, () => {
+                    if (inWall) {
+                        newFruit.overrideDamping = false;
+                    }
+                    newFruit.impactedByNew = false;
+                }, [newFruit]);
+
+                //If body has a beforeMerge listner, ring its line 📞📞
+                if (bodyA.onMerge) bodyA.onMerge(newFruit, [bodyA, bodyB]);
+                if (bodyB.onMerge) bodyB.onMerge(newFruit, [bodyA, bodyB]);
+
+                removeBody(bodyA);
+                removeBody(bodyB);
+
+                if (canvas) {
+                    //Some types have visual celebrations
+                    if (newType == "r") {
+                        //Spawn confetti at random points throughout screen
+                        let cel = setInterval(() => {
+                            let rx = Math.random() * window.innerWidth;
+                            let ry = Math.random() * window.innerHeight;
+                            confetti(rx, ry, "r")
+                        }, 150);
+
+                        scheduledEvent(3 * TICKS_PER_SECOND, () => {
+                            clearInterval(cel);
+                        });
+                    }
+                    if (newType == "t") {
+                        CAN_DIE = false;
+                        newFruit.rigidBody.setAngvel(10, true);
+                        newFruit.rigidBody.setAngularDamping(.7);
+
+                        expandingCircle(averageX, averageY, "black");
+                        //Update collision filtering so bodies only collide with others of the same type
+                        FRUITS.forEach((fruit) => {
+                            fruit.collider.setCollisionGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
+                            fruit.collider.setSolverGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
+                        });
+                        setGravityOn(false);
+                        scheduledEvent(5 * TICKS_PER_SECOND, () => {
+                            mergeAllFruitsEffect();
+                        });
+                    }
+                    textPopup(averageX, averageY, `+${scoreaddition}`);
+                    confetti(averageX, averageY, newType);
                 }
-                newFruit.impactedByNew = false;
-            }, [newFruit]);
-
-            //If body has a beforeMerge listner, ring its line 📞📞
-            if (bodyA.onMerge) bodyA.onMerge(newFruit, [bodyA, bodyB]);
-            if (bodyB.onMerge) bodyB.onMerge(newFruit, [bodyA, bodyB]);
-
-            removeBody(bodyA);
-            removeBody(bodyB);
-
-            if (canvas) {
-                //Some types have visual celebrations
-                if (newType == "r") {
-                    //Spawn confetti at random points throughout screen
-                    let cel = setInterval(() => {
-                        let rx = Math.random() * window.innerWidth;
-                        let ry = Math.random() * window.innerHeight;
-                        confetti(rx, ry, "r")
-                    }, 150);
-
-                    scheduledEvent(3 * TICKS_PER_SECOND, () => {
-                        clearInterval(cel);
-                    });
-                }
-                if (newType == "t") {
-                    newFruit.rigidBody.setAngvel(10, true);
-                    newFruit.rigidBody.setAngularDamping(.7);
-
-                    expandingCircle(averageX, averageY, "black");
-                    //Update collision filtering so bodies only collide with others of the same type
-                    FRUITS.forEach((fruit) => {
-                        fruit.collider.setCollisionGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
-                        fruit.collider.setSolverGroups(generateFilter([fruit.fruitTypeNumber], [1, fruit.fruitTypeNumber]));
-                    });
-                    setGravityOn(false);
-                    scheduledEvent(5 * TICKS_PER_SECOND, () => {
-                        console.log("MERGING");
-                        mergeAllFruitsEffect();
-                    });
-                }
-                textPopup(averageX, averageY, `+${scoreaddition}`);
-                confetti(averageX, averageY, newType);
+            } else {
+                handleTMerge(bodyA, bodyB);
             }
         }
     }
@@ -1126,8 +1328,7 @@ console.log("new",newFruit);
             body = addt(x, y, TYPE_MAP[type].radius);
 
         }
-        console.log("mid add",body);
-        if(type==0){
+        if (type == 0) {
             body.colliderDesc.setMass(10);
         }
 
@@ -1135,8 +1336,7 @@ console.log("new",newFruit);
         body.collider.setCollisionGroups(generateFilter([1], [1]));
         body.collider.setSolverGroups(generateFilter([1], [1]));
         body.rigidBody.setLinearDamping(DEFAULT_ANGULAR_DAMP);
-        
-        console.log("damping more");
+
         //Add any other options
         if (options) {
             if (options.forceRadius) {
@@ -1198,7 +1398,7 @@ console.log("new",newFruit);
                 //We are looking at an old save
                 localStorage.clear();
 
-                scheduledEvent(1*TICKS_PER_SECOND,()=>{
+                scheduledEvent(1 * TICKS_PER_SECOND, () => {
 
                     window.location.reload();
                 });
@@ -1209,6 +1409,7 @@ console.log("new",newFruit);
 
             addedFruit.rigidBody.setRotation(fruit.angle);
             addedFruit.isSad = fruit.sad;
+            addedFruit.hasFace = fruit.hasFace || fruit.fruitType != "d";
         });
 
         randFunction = RNG(RNG_SEED);
@@ -1227,7 +1428,8 @@ console.log("new",newFruit);
                     velocity: velocity,
                     fruitType: body.fruitType,
                     angle: angle,
-                    sad: body.isSad
+                    sad: body.isSad,
+                    hasFace: body.hasFace,
                 });
             });
         return {
@@ -1237,7 +1439,7 @@ console.log("new",newFruit);
             drops: DROPS,
             randsGenerated: RANDOMS_GENERATED,
             score: SCORE,
-            minimizeDuplicates: MINIMIZE_DUPLICATES
+            minimizeDuplicates: MINIMIZE_DUPLICATES,
         }
     }
     this.getNextDropColor = () => {

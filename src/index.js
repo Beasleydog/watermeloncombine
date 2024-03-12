@@ -14,9 +14,9 @@ import('@dimforge/rapier2d').then(RAPIER => {
         document.body.style.display = "unset";
     }
     //If hash includes "noembed" then remove warnText
-    // if (window.location.hash.includes("noembed")) {
-    //     document.getElementById("warn").remove();
-    // }
+    if (window.location.hash.includes("noembed")) {
+        document.getElementById("warn").remove();
+    }
 
     const popSound = new Audio("pop.mp3");
 
@@ -32,7 +32,9 @@ import('@dimforge/rapier2d').then(RAPIER => {
 
     let CURRENT_MODE = "casual";
     let game = new CombineGame(RAPIER, canvas);
+    window.game = game;
     game.setSeed(1);
+
     updateNextDropIndicator();
 
     function loadFromStorage() {
@@ -49,7 +51,9 @@ import('@dimforge/rapier2d').then(RAPIER => {
         const state = game.getFullState();
         localStorage.setItem("state", JSON.stringify(state));
     }
-
+    setInterval(() => {
+        writeToStorage();
+    }, 100);
     const options = {
         onDrop: () => {
             logFruitAdded();
@@ -58,7 +62,6 @@ import('@dimforge/rapier2d').then(RAPIER => {
         },
         onMerge: (data) => {
             popSound.cloneNode().play();
-            writeToStorage();
         },
         onScoreChange: (scoreValue) => {
             score.innerText = scoreValue;
@@ -174,6 +177,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
         });
     };
     async function sendLeaderboardScore(scoreToSend, dataURL) {
+        console.log(dataURL);
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
 
         //use purgomalum to censor bad words
