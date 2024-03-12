@@ -1,6 +1,5 @@
 function CombineGame(RAPIER, canvas, extraOptions) {
     if (!RAPIER) throw "gimme rapier yo";
-
     //Prevent hacking of global stuff
     const setTimeout = window.setTimeout;
     const setInterval = window.setInterval;
@@ -469,7 +468,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                         bodyB = body;
                     }
                 }
-            })
+            });
             handleCollision(bodyA, bodyB, started);
         });
 
@@ -754,6 +753,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
     }
     this.mergeAllFruitsEffect = mergeAllFruitsEffect;
     function addt(x, y, radius) {
+        console.log("Adding t");
         //Add points to array. Points make equilateral t of furthest length radius
         radius /= RAPIER_MULTIPLIER;
         const points = new Float32Array([
@@ -771,7 +771,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         tColliderDesc.setMass(radius * RAPIER_MULTIPLIER);
         tColliderDesc.shape.radius = radius * .5;
         //Damp ts cuz they damn bouncy
-        trigidBody.setLinearDamping(DAMP_AMOUNT);
+        tRigidBody.setLinearDamping(DAMP_AMOUNT);
 
         let collider = world.createCollider(tColliderDesc, tRigidBody);
         collider.setRestitution(0);
@@ -782,8 +782,11 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             rigidBody: tRigidBody,
             colliderDesc: tColliderDesc,
             collider: collider,
-            rigidBodyDesc: tBodyDesc
+            rigidBodyDesc: tBodyDesc,
+            hasFace:true,
+            render:{}
         }
+        setFruitStyle(addition, "t");
         BODIES.push(addition);
         return addition;
     }
@@ -926,7 +929,6 @@ function CombineGame(RAPIER, canvas, extraOptions) {
 
         //If this isn't a new collision, ignore it
         if (!started) return;
-
         if (
             bodyA.fruitType &&
             bodyB.fruitType &&
@@ -948,7 +950,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             const averageRotation = (bodyA.rigidBody.rotation() + bodyB.rigidBody.rotation()) / 2;
 
             const newType = nextType(bodyA.fruitType);
-
+            console.log(newType);
             const scoreaddition = Math.pow(
                 Object.keys(TYPE_MAP).indexOf(bodyA.fruitType) + 1,
                 2
@@ -965,17 +967,20 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             let newFruit = addFruit(newType, averageX + 1, averageY);
             newFruit.impactedByNew = CALM_NEW_FRUIT && true;
             newFruit.rigidBody.setRotation(averageRotation);
+console.log("new",newFruit);
+            let radius;
+            let inWall;
+            try{
+                radius = newFruit.colliderDesc.shape.radius*RAPIER_MULTIPLIER;
+                inWall = averageY+radius>SCREEN_HEIGHT
 
-            let radius = newFruit.colliderDesc.shape.radius*RAPIER_MULTIPLIER;
-            let inWall = averageY+radius>SCREEN_HEIGHT
-
-            if(inWall){
-                console.log("all wall, extra dampening");
-                newFruit.overrideDamping = true;
-                newFruit.rigidBody.setLinearDamping(300);
-                newFruit.rigidBody.setAngularDamping(300);
-            }
-
+                if(inWall){
+                    console.log("all wall, extra dampening");
+                    newFruit.overrideDamping = true;
+                    newFruit.rigidBody.setLinearDamping(300);
+                    newFruit.rigidBody.setAngularDamping(300);
+                }
+            }catch(e){console.log(e)}
             //As any good biologist knows, being sad is a dominant trait
             if (bodyA.isSad || bodyB.isSad) {
                 newFruit.isSad = true;
@@ -1114,14 +1119,14 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         }
     }
     function addFruit(type, x, y, options) {
-        let body
+        let body;
         if (TYPE_MAP[type].type === "circle") {
             body = addCircle(x, y, TYPE_MAP[type].radius);
         } else if (TYPE_MAP[type].type === "t") {
             body = addt(x, y, TYPE_MAP[type].radius);
 
         }
-
+        console.log("mid add",body);
         if(type==0){
             body.colliderDesc.setMass(10);
         }
