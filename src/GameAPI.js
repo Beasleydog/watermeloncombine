@@ -1123,7 +1123,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
         }
 
         if(type==0){
-            body.colliderDesc.setMass(18);
+            body.colliderDesc.setMass(10);
         }
 
         // body.rigidBodyDesc.setCanSleep(false);
