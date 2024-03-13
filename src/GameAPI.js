@@ -615,7 +615,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
                 NEXT_TYPE =
                     Object.keys(TYPE_MAP)[
                     Math.floor(
-                        (Math.pow(random, modifier) * Object.keys(TYPE_MAP).length) / 2
+                        (Math.pow(random, modifier) * 12) / 2
                     )
                     ];
                 if (NEXT_TYPE === CURRENT_TYPE) {
@@ -633,7 +633,7 @@ function CombineGame(RAPIER, canvas, extraOptions) {
             NEXT_TYPE =
                 Object.keys(TYPE_MAP)[
                 Math.floor(
-                    (Math.pow(random, modifier) * Object.keys(TYPE_MAP).length) / 2
+                    (Math.pow(random, modifier) * 12) / 2
                 )
                 ];
         }
