@@ -41,14 +41,16 @@ import('@dimforge/rapier2d').then(RAPIER => {
         let state = localStorage.getItem("state");
         if (state) {
             state = JSON.parse(state);
-            //We just want to follow the seeded ball order in ranked. Minimizing duplicates is a casual mode thing
-            CURRENT_MODE = state.minimizeDuplicates ? "casual" : "ranked";
-            rankedToggle.checked = CURRENT_MODE === "ranked";
+
+            CURRENT_MODE = state.mode||(state.minimizeDuplicates ? "casual" : "ranked");
+            applyMode(CURRENT_MODE);
+
             game.loadFromState(state);
         }
     }
     function writeToStorage() {
         const state = game.getFullState();
+        state.mode=CURRENT_MODE;
         localStorage.setItem("state", JSON.stringify(state));
     }
     setInterval(() => {
@@ -103,35 +105,34 @@ import('@dimforge/rapier2d').then(RAPIER => {
     function updateNextDropIndicator() {
         score.style.borderRight = `5px solid ${game.getNextDropColor()}`
     }
-
-    rankedToggle.oninput = (e) => {
-        if (CURRENT_MODE === "ranked") {
-            //Going to casual
-            let sure = confirm("Ball order in casual is completely random. \n\n Switching modes mid round will clear all balls, continue?");
-            if (sure) {
-                game.setMinimalDuplicates(true);
-                game.setSeed(Math.random() * 10000000);
-                game.resetToDefaultValues();
-                writeToStorage();
-                loadFromStorage();
-                rankedToggle.checked = false;
-            } else {
-                rankedToggle.checked = true;
-            }
-        } else {
-            //Going to ranked
-            let sure = confirm("Ball order in ranked is always the same. \n\n Switching modes mid round will clear all balls, continue?");
-            if (sure) {
-                game.setMinimalDuplicates(false);
-                game.setSeed(1);
-                game.resetToDefaultValues();
-                writeToStorage();
-                loadFromStorage();
-                rankedToggle.checked = true;
-            } else {
-                rankedToggle.checked = false;
-            }
+    function applyMode(m){
+        modeDropdown.value = m;
+        if(m==="casual"){
+            //Just casual tings
+            game.setMinimalDuplicates(true);
+            game.setSeed(Math.random() * 10000000);
         }
+        if(m==="ranked"){
+            //Just ranked tings
+            game.setMinimalDuplicates(false);
+            game.setSeed(1);
+        }
+    }
+    modeDropdown.oninput=(e)=>{
+        if(!confirm("Switching modes mid round will clear all balls, continue?")){
+            modeDropdown.value = CURRENT_MODE;
+            return
+        }
+
+        CURRENT_MODE = modeDropdown.value;
+
+        applyMode(CURRENT_MODE);
+
+        game.resetToDefaultValues();
+        writeToStorage();
+        loadFromStorage();
+
+        
     }
 
     const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
