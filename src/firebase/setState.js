@@ -14,8 +14,9 @@ function setState(id, state) {
         fruit.position.x = Math.round(fruit.position.x * 100) / 100;
         fruit.position.y = Math.round(fruit.position.y * 100) / 100;
         fruit.angle = Math.round(fruit.angle * 100) / 100;
-        fruit.velocity.x = Math.round(fruit.velocity.x * 100) / 100;
-        fruit.velocity.y = Math.round(fruit.velocity.y * 100) / 100;
+
+        delete fruit.velocity;
+        delete fruit.hasFace;
     });
 
     const reference = ref(database, 'states/' + id);
