@@ -68,7 +68,6 @@ import('@dimforge/rapier2d').then(RAPIER => {
         state.mode = CURRENT_MODE;
         localStorage.setItem("state", JSON.stringify(state));
     }
-    setInterval(pushToFirebase, 1000);
     setInterval(() => {
         writeToStorage();
     }, 100);
