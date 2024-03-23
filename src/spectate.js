@@ -63,7 +63,7 @@ async function displaySingleState(gameId) {
 
     setTimeout(() => {
         displaySingleState(gameId);
-    }, 10000);
+    }, 1000);
 }
 async function displayAllStates() {
     const states = await getStates();

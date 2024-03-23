@@ -22,6 +22,10 @@ function setState(id, state) {
     const lastUsedName = localStorage.getItem('lastUsedName');
     state.lastUsedName = lastUsedName;
 
+    //Random number. When spectating, the state will update every time this number changes.
+    //Pretty unlikely that this number will be the same twice in a row
+    state.updateNumber = Math.round(Math.random() * 30);
+
     const reference = ref(database, 'states/' + id);
     set(reference, state);
 
