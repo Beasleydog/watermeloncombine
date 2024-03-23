@@ -3,8 +3,12 @@ module.exports = {
         asyncWebAssembly: true
     },
     watch: true,
+    entry: {
+        main: './src/index.js',
+        spectate: './src/spectate.js'
+    },
     output: {
-        filename: 'main.js',
-        path: __dirname
+        filename: '[name].js',
+        path: __dirname + "/build"
     }
 }

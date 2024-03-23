@@ -123,19 +123,7 @@
     user-select: none;
 }
 
-#gameCanvas {
-    position: fixed;
-    bottom: 0;
-    left: 50vw;
-    transform: translateX(-50%);
-    z-index: 100;
-    backdrop-filter: blur(1px);
-    background: rgb(255 255 255 / 10%);
-    border: 1px solid black;
-    border-top: none;
-    width: calc(100vw * 777 / 1366);
-    height: calc(100vh * 777 / 1366);
-}
+
 #warn{
     z-index: 99999;
     position: fixed;
@@ -161,4 +149,88 @@
 }
 *{
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+
+
+
+
+
+/* ELEMENTAL LTM STUFF */
+#elementalButtons{
+    position: absolute;
+    z-index: 999999;
+    display: flex;
+    gap: 10px;
+    bottom: 0px;
+    left: 50%;
+    transform: translateX(-50%);
+
+    padding:15px;
+    pointer-events: none;
+}
+.elementButton{
+    background: white;
+    padding: 10px;
+    border-radius: 50%;
+    font-size: 37px;
+    box-shadow: rgba(128, 128, 128, 0.651) 0px 0px 2px, rgba(128, 128, 128, 0.193) 0px 0px 5px;
+    cursor: pointer;
+    transition: all .1s;
+    pointer-events: all;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    border-width: 5px;
+    border-style: solid;
+}
+
+.elementCooling.elementButton{
+    font-size: 30px;
+    opacity:.6;
+    cursor: not-allowed;
+}
+.elementButton:not(.elementCooling):hover{
+    transform: scale(1.1);
+    margin-left: calc(1.05 * 10px);
+    margin-right: calc(1.05 * 10px);
+}
+.elementCooldown{
+    display:none
+}
+.elementCooling .elementCooldown{
+    font-size: 15px;
+    font-weight: bold;
+    color: #414141;
+    display: block;
+}
+.elementButtonSelected{
+    box-shadow: rgba(128, 128, 128, 0.651) 0px 0px 2px, rgba(128, 128, 128, 0.193) 0px 0px 5px, 0px 0px 5px 2px rgba(168, 168, 168, 0.403);
+    transform: scale(1.2);
+    margin-left: calc(1.05 * 10px);
+    margin-right: calc(1.05 * 10px);
+}
+canvas {
+    position: fixed;
+    bottom: 0;
+    left: 50vw;
+    transform: translateX(-50%);
+    z-index: 100;
+    border: 1px solid black;
+    border-top: none;
+    width: calc(100vw * 777 / 1366);
+    height: calc(100vh * 777 / 1366);
+}
+#gameCanvas{
+    background: rgb(255 255 255 / 10%);
+    z-index:99;
+}
+#waterCanvas{
+    filter:url(#particles-filter)
+}
+#effectsCanvas{
+    z-index: 1000;
 }

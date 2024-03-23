@@ -1,4 +1,8 @@
 import CombineGame from './GameAPI.js';
+import ELTM from './ELTM/ELTM.js';
+import setState from './firebase/setState.js';
+import TYPE_MAP from './utils/typeMap.js';
+
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
         console.log("close ball")
@@ -15,34 +19,45 @@ import('@dimforge/rapier2d').then(RAPIER => {
     }
     //If hash includes "noembed" then remove warnText
     if (window.location.hash.includes("noembed")) {
-        document.getElementById("warn").remove();
+        // document.getElementById("warn").remove();
     }
 
     const popSound = new Audio("pop.mp3");
 
     const canvas = document.getElementById("gameCanvas");
-    window.onresize = () => {
-        Object.assign(canvas.style, {
-            ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
+
+    //Ensure that canvases are always sized
+
+    const resizeCallback = () => {
+        [...document.getElementsByTagName("canvas")].forEach((c) => {
+            Object.assign(c.style, {
+                ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
+            });
         });
     }
-    window.onresize();
+    window.addEventListener("resize", resizeCallback)
+    resizeCallback();
 
     const score = document.getElementById("score");
 
     let CURRENT_MODE = "casual";
-    let game = new CombineGame(RAPIER, canvas);
+    let game = new CombineGame(RAPIER, canvas, {
+        TYPE_MAP: TYPE_MAP
+    });
+
     window.game = game;
     game.setSeed(1);
 
     updateNextDropIndicator();
+
+    const eltm = new ELTM(game, canvas);
 
     function loadFromStorage() {
         let state = localStorage.getItem("state");
         if (state) {
             state = JSON.parse(state);
 
-            CURRENT_MODE = state.mode||(state.minimizeDuplicates ? "casual" : "ranked");
+            CURRENT_MODE = state.mode || (state.minimizeDuplicates ? "casual" : "ranked");
             applyMode(CURRENT_MODE);
 
             game.loadFromState(state);
@@ -50,12 +65,17 @@ import('@dimforge/rapier2d').then(RAPIER => {
     }
     function writeToStorage() {
         const state = game.getFullState();
-        state.mode=CURRENT_MODE;
+        state.mode = CURRENT_MODE;
         localStorage.setItem("state", JSON.stringify(state));
     }
     setInterval(() => {
         writeToStorage();
     }, 100);
+    setInterval(() => {
+        //Write to firebase
+        const state = game.getFullState();
+        setState(game.getGameId(), state);
+    }, 2000);
     const options = {
         onDrop: () => {
             logFruitAdded();
@@ -84,7 +104,16 @@ import('@dimforge/rapier2d').then(RAPIER => {
     game.loop();
     document.onclick = (e) => {
         if (!e.isTrusted) return;
-        if (e.target.classList.contains("nodrop")) return;
+        console.log(e.target);
+        if (!e.target.getAttribute("drop") != "") return;
+
+        if (CURRENT_MODE === "eltm") {
+            const click = eltm.handleScreenClick(e);
+            if (click.intercepted) {
+                return;
+            }
+        }
+
         game.handleClick(e);
     }
     document.onmousemove = game.handleMove;
@@ -105,21 +134,26 @@ import('@dimforge/rapier2d').then(RAPIER => {
     function updateNextDropIndicator() {
         score.style.borderRight = `5px solid ${game.getNextDropColor()}`
     }
-    function applyMode(m){
+    function applyMode(m) {
         modeDropdown.value = m;
-        if(m==="casual"){
+        if (m === "casual") {
             //Just casual tings
             game.setMinimalDuplicates(true);
             game.setSeed(Math.random() * 10000000);
         }
-        if(m==="ranked"){
+        if (m === "ranked") {
             //Just ranked tings
             game.setMinimalDuplicates(false);
             game.setSeed(1);
         }
+        if (m == "eltm") {
+            elementalButtons.style.display = "flex";
+        } else {
+            elementalButtons.style.display = "none";
+        }
     }
-    modeDropdown.oninput=(e)=>{
-        if(!confirm("Switching modes mid round will clear all balls, continue?")){
+    modeDropdown.oninput = (e) => {
+        if (!confirm("Switching modes mid round will clear all balls, continue?")) {
             modeDropdown.value = CURRENT_MODE;
             return
         }
@@ -132,7 +166,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
         writeToStorage();
         loadFromStorage();
 
-        
+
     }
 
     const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbw6iTqt_fyO5OtTZ9de3pZUEglgvTH9tlVxkiPmlpkjaRpoqz0vn8IK_CddqT3F3OLsTw/exec";
@@ -270,7 +304,6 @@ import('@dimforge/rapier2d').then(RAPIER => {
         data.forEach((entry, i) => {
             let div = document.createElement("div");
             div.classList.add("leaderboardEntry");
-            div.classList.add("nodrop");
 
             div.innerText = `${i + 1}.  ${entry[0]} - ${entry[1]}`;
             leaderboard.appendChild(div);
@@ -280,7 +313,6 @@ import('@dimforge/rapier2d').then(RAPIER => {
 
             let displayImage = document.createElement("img");
             displayImage.classList.add("leaderboardImage");
-            displayImage.classList.add("nodrop");
             displayImage.src = entry[2];
             displayImage.style.width = "100px";
             displayImage.style.objectFit = "cover";
@@ -334,4 +366,31 @@ import('@dimforge/rapier2d').then(RAPIER => {
         }
     }
 
+
+
+    //ELTM STUFF
+    const butttonColorMap = {
+        "fire": "#ffa91a",
+        "water": "#241aff",
+        "ground": "#3b0808",
+        "wind": "#424242"
+    }
+
+    const elementButtons = [...document.getElementsByClassName("elementButton")];
+    elementButtons.forEach((button) => {
+        button.style.borderColor = butttonColorMap[button.getAttribute("element")];
+        button.onclick = () => {
+            const updatedButtonList = eltm.handlePowerClick(button.getAttribute("element"));
+
+            //Loop through all buttons cuz enabling one may have disabled another
+            updatedButtonList.forEach((afterButton) => {
+                const buttonElement = elementButtons.find(b => b.getAttribute("element") === afterButton.name);
+                if (afterButton.selected) {
+                    buttonElement.classList.add("elementButtonSelected");
+                } else {
+                    buttonElement.classList.remove("elementButtonSelected");
+                }
+            });
+        }
+    });
 })

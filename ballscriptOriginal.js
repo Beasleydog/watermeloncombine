@@ -1,9 +1,9 @@
 document.addEventListener("keydown", (e) => {
-        if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
-            console.log("close ball")
-            parent.postMessage("closeBall", "*");
-        }
-    });
+    if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
+        console.log("close ball")
+        parent.postMessage("closeBall", "*");
+    }
+});
 
 //Don't work on small screens. 
 //This MIGHT be to try to hide windows that accidentally got embedded in Schoology posts 😳🤫
@@ -78,7 +78,7 @@ game.loop();
 
 document.onclick = (e) => {
     if (!e.isTrusted) return;
-    if (e.target.classList.contains("nodrop")) return;
+    if (!e.target.drop) return;
     game.handleClick(e);
 }
 document.onmousemove = game.handleMove;
@@ -264,7 +264,6 @@ function renderLeaderboard(data) {
     data.forEach((entry, i) => {
         let div = document.createElement("div");
         div.classList.add("leaderboardEntry");
-        div.classList.add("nodrop");
 
         div.innerText = `${i + 1}.  ${entry[0]} - ${entry[1]}`;
         leaderboard.appendChild(div);
@@ -274,7 +273,6 @@ function renderLeaderboard(data) {
 
         let displayImage = document.createElement("img");
         displayImage.classList.add("leaderboardImage");
-        displayImage.classList.add("nodrop");
         displayImage.src = entry[2];
         displayImage.style.width = "100px";
         displayImage.style.objectFit = "cover";

@@ -1,36 +1,72 @@
-<html>
+<html drop="true">
 
 <head>
     <link rel="stylesheet" href="index.css">
 </head>
 
-<body style="display:none;">
-    <canvas id="gameCanvas" width="1366" height="777"></canvas>
-    <div id="score" class="nodrop">0</div>
-    <div id="rankedToggleContainer" class="nodrop">
-        <select id="modeDropdown" class="nodrop">
+<body style="display:none;" drop="true">
+    <canvas id="gameCanvas" width="1366" height="777" drop="true"></canvas>
+    <canvas id="waterCanvas" width="1366" height="777" drop="true"></canvas>
+    <canvas id="effectsCanvas" width="1366" height="777" drop="true"></canvas>
+    <div id="score">0</div>
+    <div id="rankedToggleContainer">
+        <select id="modeDropdown">
             <option value="casual">Casual</option>
             <option value="ranked">Ranked</option>
-            <option value="elementalLTM">Elemental 🔥🌊🌬🪨</option>
+            <!-- <option value="eltm">Elemental 🔥🌊🌬🪨</option> -->
         </select>
     </div>
-    <div id="warn">Smile update dropped 😃<br><br>I changed the physics, lemme know if its weird</div>
-    <div id="leaderboardButton" class="nodrop">👑</div>
-    <div id="leaderboardPopup" class="nodrop">
-        <div id="leaderboardContent" class="nodrop">
-            <div id="leaderboardHeader" class="nodrop">Casual Leaderboard</div>
-            <div id="leaderboardModeToggle" class="nodrop">Ranked</div>
-            <div id="leaderboardSubtitle" class="nodrop">Ball drop order is random in casual mode.</div>
-            <div id="leaderboardEntries" class="nodrop">
+    <div id="warn" drop="true">LTM coming soon ⁉️</div>
+    <div id="leaderboardButton">👑</div>
+    <div id="leaderboardPopup">
+        <div id="leaderboardContent">
+            <div id="leaderboardHeader">Casual Leaderboard</div>
+            <div id="leaderboardModeToggle">Ranked</div>
+            <div id="leaderboardSubtitle">Ball drop order is random in casual mode.</div>
+            <div id="leaderboardEntries">
             </div>
         </div>
     </div>
     <div id="elementalButtons">
-        <div class="elementButton">
-            🔥🌊🌬🪨
+        <div class="elementButton" element="fire">
+            <span class="elementIcon">
+                🔥
+            </span>
+            <span class="elementCooldown">
+            </span>
+        </div>
+        <div class="elementButton" element="water">
+            <span class="elementIcon">
+                🌊
+            </span>
+            <span class="elementCooldown">
+            </span>
+        </div>
+        <div class="elementButton" element="wind">
+            <span class="elementIcon">
+                🌪️
+            </span>
+            <span class="elementCooldown">
+            </span>
+        </div>
+        <div class="elementButton" element="ground">
+            <span class="elementIcon">
+                🪨
+            </span>
+            <span class="elementCooldown">
+            </span>
         </div>
     </div>
-    <script src="./main.js"></script>
+    <script src="./build/main.js"></script>
+    <svg xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="particles-filter">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 15 -4"
+                    result="goo" />
+            </filter>
+        </defs>
+    </svg>
 </body>
 
 </html
