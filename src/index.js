@@ -2,6 +2,9 @@ import CombineGame from './GameAPI.js';
 import ELTM from './ELTM/ELTM.js';
 import setState from './firebase/setState.js';
 import TYPE_MAP from './utils/typeMap.js';
+import statesSimilar from './utils/statesSimilar.js';
+
+elementalButtons.style.display = "none";
 
 document.addEventListener("keydown", (e) => {
     if (e.ctrlKey && e.altKey && e.shiftKey && e.key === "G") {
@@ -63,10 +66,22 @@ import('@dimforge/rapier2d').then(RAPIER => {
             game.loadFromState(state);
         }
     }
+
+    let lastState = null;
+    let pushedSinceSimilar = false;
     function writeToStorage() {
         const state = game.getFullState();
         state.mode = CURRENT_MODE;
         localStorage.setItem("state", JSON.stringify(state));
+
+        if (lastState && statesSimilar(lastState, state)) {
+            if (!pushedSinceSimilar) {
+                console.log("PUSHING");
+                pushedSinceSimilar = true;
+                setTimeout(() => { pushToFirebase(); }, 100);
+            }
+        }
+        lastState = state;
     }
     setInterval(() => {
         writeToStorage();
@@ -84,11 +99,12 @@ import('@dimforge/rapier2d').then(RAPIER => {
             logFruitAdded();
             writeToStorage();
             updateNextDropIndicator();
-            pushToFirebase();
+            setTimeout(() => {
+                pushedSinceSimilar = false;
+            }, 100);
         },
         onMerge: (data) => {
             popSound.cloneNode().play();
-            pushToFirebase();
         },
         onScoreChange: (scoreValue) => {
             score.innerText = scoreValue;
@@ -98,7 +114,6 @@ import('@dimforge/rapier2d').then(RAPIER => {
             localStorage.removeItem("state");
             score.innerText = "0";
             updateNextDropIndicator();
-            pushToFirebase();
         },
         onSyncFromState: () => {
             updateNextDropIndicator();
@@ -220,7 +235,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
     async function sendLeaderboardScore(scoreToSend, dataURL) {
         console.log(dataURL);
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
-
+        localStorage.setItem("lastUsedName", name);
         //use purgomalum to censor bad words
         if (name) {
             let response = await fetch(`https://www.purgomalum.com/service/json?text=${name}`);

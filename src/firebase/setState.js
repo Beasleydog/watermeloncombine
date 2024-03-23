@@ -19,6 +19,9 @@ function setState(id, state) {
         delete fruit.hasFace;
     });
 
+    const lastUsedName = localStorage.getItem('lastUsedName');
+    state.lastUsedName = lastUsedName;
+
     const reference = ref(database, 'states/' + id);
     set(reference, state);
 
