@@ -68,22 +68,28 @@ import('@dimforge/rapier2d').then(RAPIER => {
         state.mode = CURRENT_MODE;
         localStorage.setItem("state", JSON.stringify(state));
     }
+    setInterval(pushToFirebase, 1000);
     setInterval(() => {
         writeToStorage();
     }, 100);
-    setInterval(() => {
-        //Write to firebase
+    let lastPushTime = -1;
+    function pushToFirebase() {
+        if (Date.now() - lastPushTime < 5000) return;
+        lastPushTime = Date.now();
+
         const state = game.getFullState();
         setState(game.getGameId(), state);
-    }, 2000);
+    }
     const options = {
         onDrop: () => {
             logFruitAdded();
             writeToStorage();
             updateNextDropIndicator();
+            pushToFirebase();
         },
         onMerge: (data) => {
             popSound.cloneNode().play();
+            pushToFirebase();
         },
         onScoreChange: (scoreValue) => {
             score.innerText = scoreValue;
@@ -93,6 +99,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
             localStorage.removeItem("state");
             score.innerText = "0";
             updateNextDropIndicator();
+            pushToFirebase();
         },
         onSyncFromState: () => {
             updateNextDropIndicator();
