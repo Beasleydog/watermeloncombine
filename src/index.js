@@ -1,8 +1,10 @@
 import CombineGame from './GameAPI.js';
 import ELTM from './ELTM/ELTM.js';
-import setState from './firebase/setState.js';
 import TYPE_MAP from './utils/typeMap.js';
 import statesSimilar from './utils/statesSimilar.js';
+import { io } from "socket.io-client";
+
+const socket = io("https://ballcombineserver.glitch.me");
 
 elementalButtons.style.display = "none";
 
@@ -68,40 +70,33 @@ import('@dimforge/rapier2d').then(RAPIER => {
     }
 
     let lastState = null;
-    let pushedSinceSimilar = false;
     function writeToStorage() {
         const state = game.getFullState();
         state.mode = CURRENT_MODE;
         localStorage.setItem("state", JSON.stringify(state));
 
-        if (lastState && statesSimilar(lastState, state)) {
-            if (!pushedSinceSimilar) {
-                console.log("PUSHING");
-                pushedSinceSimilar = true;
-                setTimeout(() => { pushToFirebase(); }, 100);
-            }
+        if (lastState && !statesSimilar(lastState, state)) {
+            pushToServer();
         }
         lastState = state;
     }
     setInterval(() => {
         writeToStorage();
     }, 100);
-    let lastPushTime = -1;
-    function pushToFirebase() {
-        if (Date.now() - lastPushTime < 5000) return;
-        lastPushTime = Date.now();
 
-        const state = game.getFullState();
-        setState(game.getGameId(), state);
+    function pushToServer() {
+        socket.emit("event", {
+            type: "updateState",
+            gameId: game.getGameId(),
+            state: game.getFullState()
+        });
     }
+
     const options = {
         onDrop: () => {
             logFruitAdded();
             writeToStorage();
             updateNextDropIndicator();
-            setTimeout(() => {
-                pushedSinceSimilar = false;
-            }, 100);
         },
         onMerge: (data) => {
             popSound.cloneNode().play();

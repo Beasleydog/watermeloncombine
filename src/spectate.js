@@ -1,9 +1,10 @@
-import getStates from "./firebase/getStates";
-import getState from "./firebase/getState";
 import drawBodiesToCanvas from "./utils/render";
 import TYPE_MAP from "./utils/typeMap";
+import { io } from "socket.io-client";
 
+const socket = io("https://ballcombineserver.glitch.me");
 //This design is idiotic but it works.
+
 
 //Read the query params to see if we have a gameId
 const urlParams = new URLSearchParams(window.location.search);
@@ -63,7 +64,7 @@ async function displaySingleState(gameId) {
 
     setTimeout(() => {
         displaySingleState(gameId);
-    }, 1000);
+    }, 100);
 }
 async function displayAllStates() {
     const states = await getStates();
@@ -117,5 +118,24 @@ async function displayAllStates() {
         drawBodiesToCanvas(ctx, bodies, 0, 0);
 
 
+    });
+    setTimeout(() => {
+        displayAllStates();
+    }, 10 * 1000);
+}
+function getState(gameId) {
+    return new Promise((resolve, reject) => {
+        socket.emit("event", { type: "getState", gameId });
+        socket.on("state", (state) => {
+            resolve(state);
+        });
+    });
+}
+function getStates() {
+    return new Promise((resolve, reject) => {
+        socket.emit("event", { type: "getStates" });
+        socket.on("state", (state) => {
+            resolve(state);
+        });
     });
 }
