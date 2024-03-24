@@ -85,11 +85,12 @@ import('@dimforge/rapier2d').then(RAPIER => {
     }, 100);
 
     function pushToServer() {
+        const state = game.getFullState();
+        state.lastUsedName = localStorage.getItem("lastUsedName");
         socket.emit("event", {
             type: "updateState",
             gameId: game.getGameId(),
             state: game.getFullState(),
-            lastUsedName: localStorage.getItem("lastUsedName")
         });
     }
 
