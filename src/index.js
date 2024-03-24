@@ -90,7 +90,7 @@ import('@dimforge/rapier2d').then(RAPIER => {
         socket.emit("event", {
             type: "updateState",
             gameId: game.getGameId(),
-            state: game.getFullState(),
+            state: state,
         });
     }
 

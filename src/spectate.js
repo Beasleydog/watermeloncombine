@@ -17,54 +17,59 @@ if (gameId) {
 }
 
 async function displaySingleState(gameId) {
-    const state = await getState(gameId);
-    document.body.innerHTML = "";
-    document.body.style.display = "unset";
+    try {
+        const state = await getState(gameId);
+        document.body.innerHTML = "";
+        document.body.style.display = "unset";
 
-    const container = document.createElement("div");
+        const container = document.createElement("div");
 
-    const canvas = document.createElement("canvas");
-    canvas.height = 777;
-    canvas.width = 1366;
-    canvas.lastUsedName = state.lastUsedName;
-    container.appendChild(canvas);
+        const canvas = document.createElement("canvas");
+        canvas.height = 777;
+        canvas.width = 1366;
+        canvas.lastUsedName = state.lastUsedName;
+        container.appendChild(canvas);
 
-    Object.assign(canvas.style, {
-        ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
-    });
-
-    const name = document.createTextNode(state.lastUsedName);
-    container.appendChild(name);
-
-    document.body.appendChild(container);
-
-    const bodies = [];
-    const RAPIER_MULTIPLIER = 100;
-    state.fruits.forEach((fruit) => {
-        const type = Object.assign({}, TYPE_MAP[fruit.fruitType]);
-
-        if (type.type == "t") type.radius /= 1.9;
-
-        bodies.push({
-            position: {
-                x: fruit.position.x * RAPIER_MULTIPLIER,
-                y: fruit.position.y * RAPIER_MULTIPLIER,
-            },
-            radius: type.radius,
-            rotation: fruit.angle,
-            type: type.type,
-            render: type,
-            hasFace: !type.img,
-            isSad: fruit.sad,
+        Object.assign(canvas.style, {
+            ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
         });
-    });
 
-    const ctx = canvas.getContext("2d");
-    drawBodiesToCanvas(ctx, bodies, 0, 0);
+        const name = document.createTextNode(state.lastUsedName);
+        container.appendChild(name);
 
-    setTimeout(() => {
-        displaySingleState(gameId);
-    }, 100);
+        document.body.appendChild(container);
+
+        const bodies = [];
+        const RAPIER_MULTIPLIER = 100;
+        state.fruits.forEach((fruit) => {
+            const type = Object.assign({}, TYPE_MAP[fruit.fruitType]);
+
+            if (type.type == "t") type.radius /= 1.9;
+
+            bodies.push({
+                position: {
+                    x: fruit.position.x * RAPIER_MULTIPLIER,
+                    y: fruit.position.y * RAPIER_MULTIPLIER,
+                },
+                radius: type.radius,
+                rotation: fruit.angle,
+                type: type.type,
+                render: type,
+                hasFace: !type.img,
+                isSad: fruit.sad,
+            });
+        });
+
+        const ctx = canvas.getContext("2d");
+        drawBodiesToCanvas(ctx, bodies, 0, 0);
+
+        setTimeout(() => {
+            displaySingleState(gameId);
+        }, 100);
+    } catch (e) {
+        console.error(e);
+
+    }
 }
 async function displayAllStates() {
     const states = await getStates();
