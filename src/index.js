@@ -232,9 +232,10 @@ import('@dimforge/rapier2d').then(RAPIER => {
     async function sendLeaderboardScore(scoreToSend, dataURL) {
         console.log(dataURL);
         let name = prompt("Enter your name if you would like to submit your score to leaderboard. Use your real name and don't put anything bad pls 🙏");
-        localStorage.setItem("lastUsedName", name);
         //use purgomalum to censor bad words
         if (name) {
+            localStorage.setItem("lastUsedName", name);
+
             let response = await fetch(`https://www.purgomalum.com/service/json?text=${name}`);
             let json = await response.json();
             name = json.result;
