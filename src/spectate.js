@@ -34,7 +34,7 @@ async function displaySingleState(gameId) {
             ...(window.innerWidth * 777 / 1366 > window.innerHeight ? { height: `100vh`, width: `auto` } : { width: `100vw`, height: `auto` }),
         });
 
-        const name = document.createTextNode(state.lastUsedName);
+        const name = document.createTextNode(`${state.lastUsedName} - ${state.score}`);
         container.appendChild(name);
 
         document.body.appendChild(container);
